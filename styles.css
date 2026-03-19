@@ -173,6 +173,23 @@ body {
     background: transparent;
 }
 
+.org-brand,
+.org-brand:visited {
+    color: inherit;
+    text-decoration: none;
+}
+
+.org-brand:hover .org-name,
+.org-brand:focus-visible .org-name {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.org-brand:focus-visible {
+    outline: 3px solid rgba(10, 74, 122, 0.25);
+    outline-offset: 2px;
+}
+
 .org-logo {
     width: 30px;
     height: 30px;
