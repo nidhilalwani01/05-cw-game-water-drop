@@ -24,7 +24,7 @@
                 <p class="org-name">charity: water</p>
             </div>
             <h1 class="game-title">Drop for Change</h1>
-            <p class="mission-statement">Collect clean water drops and make an impact.</p>
+            <p class="mission-statement">Catch clean water, avoid polluted drops, and adapt to changing weather to bring clean water closer.</p>
             <div class="header-accent" aria-hidden="true"></div>
         </header>
 
@@ -52,11 +52,10 @@
                 <button id="start-btn" class="btn btn-primary">Start Game</button>
                 <button id="reset-btn" class="btn btn-secondary">Reset</button>
                 <div class="weather-control">
-                    <label for="weather-mode" class="weather-mode-label">Weather</label>
                     <select id="weather-mode" class="weather-mode-select" aria-label="Choose storm intensity mode">
-                        <option value="calm">Calm</option>
-                        <option value="dramatic" selected>Dramatic</option>
-                        <option value="hard">Hard</option>
+                        <option value="calm">Weather: Calm</option>
+                        <option value="dramatic" selected>Weather: Dramatic</option>
+                        <option value="hard">Weather: Hard</option>
                     </select>
                 </div>
             </div>
@@ -99,17 +98,17 @@
 
         <!-- Game instructions -->
         <section class="instructions" aria-label="How to play">
-            <h3>Your Mission</h3>
-            <p class="mission-tip"><strong>Move the bucket</strong> with left/right arrow keys or slide your thumb left and right.</p>
-            <p class="legend-item"><span class="drop-icon clean material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Clean Water</strong> - You collected clean water! (+10)</p>
-            <p class="legend-item"><span class="drop-icon bonus material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Jerry Can Bonus</strong> - Amazing! You helped bring clean water closer. (+50)</p>
-            <p class="legend-item"><span class="drop-icon polluted material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Polluted Drop</strong> - That drop was polluted - try another. (-20)</p>
-            <p class="goal-text">Reach 150 points to help bring clean water closer.</p>
+            <h3>Mission: Adapt and Collect</h3>
+            <p class="mission-tip"><strong>Move the bucket:</strong> arrow keys or swipe.</p>
+            <p class="legend-item"><span class="drop-icon clean material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Catch clean drops</strong> (+10) and jerry cans (+50).</p>
+            <p class="legend-item"><span class="drop-icon polluted material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Avoid polluted drops</strong> (-20).</p>
+            <p class="legend-item"><span class="drop-icon polluted material-symbols-rounded" aria-hidden="true">bolt</span> <strong>Watch the weather</strong> and react before lightning.</p>
+            <p class="goal-text">Goal: 150 points.</p>
         </section>
 
         <!-- Impact footer -->
         <footer class="impact-footer">
-            Clean water access is everyone's right.
+            Catch smart. Adapt fast. Bring clean water closer.
         </footer>
     </main>
 
