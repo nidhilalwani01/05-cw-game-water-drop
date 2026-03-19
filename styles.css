@@ -97,6 +97,51 @@ body {
     background: color-mix(in srgb, var(--bg-wrapper) 90%, #f2f9fd 10%);
 }
 
+.weather-mode-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+    font-weight: 700;
+}
+
+.weather-control {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid color-mix(in srgb, var(--border-main) 74%, #c3e1ef 26%);
+    background: linear-gradient(180deg, #ffffff 0%, #eef7fc 100%);
+    border-radius: 999px;
+    min-height: 48px;
+    padding: 6px 10px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.weather-mode-select {
+    border: 1px solid color-mix(in srgb, var(--border-main) 70%, #b6d7e6 30%);
+    background: rgba(255, 255, 255, 0.9);
+    color: #1a5d86;
+    border-radius: 999px;
+    min-height: 32px;
+    padding: 5px 10px;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.weather-mode-select option {
+    background: #ffffff;
+    color: #1a5d86;
+}
+
+.weather-mode-select:focus-visible {
+    outline: 3px solid rgba(10, 74, 122, 0.25);
+    outline-offset: 2px;
+}
+
 .theme-label {
     font-size: 0.8rem;
     letter-spacing: 0.08em;
@@ -307,14 +352,269 @@ body {
     overflow: hidden;
     border-radius: 18px;
     border: 2px dashed #b7d0dc;
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.08)),
-        repeating-radial-gradient(circle at 20px 20px, rgba(255, 255, 255, 0.055) 0 2px, transparent 2px 30px),
-        repeating-linear-gradient(135deg, rgba(10, 74, 122, 0.018) 0 1px, transparent 1px 26px),
-        linear-gradient(180deg, #cfe8f1 0%, #b9dbe7 100%);
+    background: linear-gradient(180deg, #c9e9f9 0%, #99cde4 100%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
     touch-action: none;
     isolation: isolate;
+    --lightning-core-alpha: 0.86;
+    --lightning-edge-alpha: 0.3;
+    --storm-cloud-visibility: 1;
+}
+
+#game-container.weather-calm {
+    --lightning-core-alpha: 0.6;
+    --lightning-edge-alpha: 0.2;
+    --storm-cloud-visibility: 0.82;
+}
+
+#game-container.weather-dramatic,
+#game-container.weather-hard {
+    --lightning-core-alpha: 0.92;
+    --lightning-edge-alpha: 0.38;
+    --storm-cloud-visibility: 1;
+}
+
+/* Layered game environment so weather effects stay separate from gameplay logic. */
+.environment-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.sky-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.04)),
+        repeating-radial-gradient(circle at 24px 24px, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 34px);
+}
+
+.cloud,
+.storm-cloud {
+    position: absolute;
+    display: block;
+    border-radius: 999px;
+    will-change: transform;
+    --cloud-scale: 1;
+    --cloud-shadow-alpha: 0.2;
+}
+
+.cloud {
+    width: 112px;
+    height: 36px;
+    opacity: 0.9;
+    background:
+        radial-gradient(circle at 22% 34%, rgba(255, 255, 255, 0.96) 0 28%, rgba(255, 255, 255, 0) 72%),
+        radial-gradient(circle at 52% 26%, rgba(255, 255, 255, 0.94) 0 33%, rgba(255, 255, 255, 0) 74%),
+        radial-gradient(circle at 80% 40%, rgba(246, 252, 255, 0.88) 0 27%, rgba(246, 252, 255, 0) 70%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(239, 248, 255, 0.75));
+    filter: drop-shadow(0 6px 12px rgba(33, 74, 102, 0.12));
+    animation: driftCloud linear infinite;
+}
+
+.cloud::before,
+.cloud::after,
+.storm-cloud::before,
+.storm-cloud::after {
+    content: '';
+    position: absolute;
+    border-radius: 999px;
+}
+
+.cloud::before {
+    width: 46px;
+    height: 46px;
+    left: 16px;
+    top: -18px;
+    background: radial-gradient(circle at 38% 38%, rgba(255, 255, 255, 0.98), rgba(245, 252, 255, 0.78) 68%, rgba(245, 252, 255, 0.12) 100%);
+}
+
+.cloud::after {
+    width: 58px;
+    height: 58px;
+    right: 14px;
+    top: -24px;
+    background: radial-gradient(circle at 36% 32%, rgba(255, 255, 255, 0.94), rgba(240, 250, 255, 0.66) 70%, rgba(240, 250, 255, 0.1) 100%);
+}
+
+.cloud-1 {
+    top: 16%;
+    left: -26%;
+    animation-duration: 36s;
+}
+
+.cloud-2 {
+    top: 24%;
+    left: -38%;
+    --cloud-scale: 1.16;
+    animation-duration: 45s;
+    animation-delay: -8s;
+}
+
+.cloud-3 {
+    top: 9%;
+    left: -34%;
+    --cloud-scale: 0.92;
+    animation-duration: 52s;
+    animation-delay: -22s;
+}
+
+.cloud-4 {
+    top: 31%;
+    left: -42%;
+    --cloud-scale: 1.08;
+    animation-duration: 48s;
+    animation-delay: -16s;
+}
+
+/* Storm clouds fade in only during active storm windows. */
+.storm-cloud {
+    width: 132px;
+    height: 42px;
+    top: 7%;
+    left: -30%;
+    opacity: 0;
+    background:
+        radial-gradient(circle at 22% 30%, rgba(111, 124, 139, 0.88) 0 27%, rgba(111, 124, 139, 0) 76%),
+        radial-gradient(circle at 58% 24%, rgba(95, 107, 121, 0.9) 0 34%, rgba(95, 107, 121, 0) 76%),
+        radial-gradient(circle at 84% 40%, rgba(71, 84, 98, 0.86) 0 28%, rgba(71, 84, 98, 0) 74%),
+        linear-gradient(180deg, rgba(96, 110, 125, 0.92), rgba(58, 72, 87, 0.82));
+    filter: drop-shadow(0 8px 12px rgba(24, 33, 42, 0.3));
+    animation: driftCloud linear infinite;
+    transition: opacity 0.35s ease;
+}
+
+.storm-cloud::before {
+    width: 56px;
+    height: 56px;
+    left: 16px;
+    top: -22px;
+    background: radial-gradient(circle at 36% 34%, rgba(120, 135, 150, 0.9), rgba(80, 95, 110, 0.35) 76%, rgba(80, 95, 110, 0.08) 100%);
+}
+
+.storm-cloud::after {
+    width: 62px;
+    height: 62px;
+    right: 14px;
+    top: -25px;
+    background: radial-gradient(circle at 36% 34%, rgba(107, 121, 137, 0.88), rgba(67, 80, 94, 0.35) 76%, rgba(67, 80, 94, 0.08) 100%);
+}
+
+.storm-cloud-1 {
+    animation-duration: 28s;
+}
+
+.storm-cloud-2 {
+    top: 14%;
+    --cloud-scale: 1.14;
+    animation-duration: 32s;
+    animation-delay: -7s;
+}
+
+.storm-cloud-3 {
+    top: 3%;
+    --cloud-scale: 0.9;
+    animation-duration: 34s;
+    animation-delay: -14s;
+}
+
+.lightning-flash {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    z-index: 3;
+    background: radial-gradient(
+        circle at 50% 22%,
+        rgba(205, 236, 255, var(--lightning-core-alpha)),
+        rgba(173, 215, 241, var(--lightning-edge-alpha)) 45%,
+        rgba(255, 255, 255, 0) 70%
+    );
+}
+
+.lightning-bolt {
+    position: absolute;
+    top: 14%;
+    left: 50%;
+    transform: translateX(-50%) scale(0.78);
+    font-size: 84px;
+    line-height: 1;
+    color: #f3fcff;
+    text-shadow: 0 0 20px rgba(182, 230, 255, 0.95), 0 0 36px rgba(145, 213, 246, 0.9);
+    opacity: 0;
+    z-index: 4;
+}
+
+.rain-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 2;
+}
+
+.rain-drop {
+    position: absolute;
+    top: -24px;
+    width: 2px;
+    height: 18px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, rgba(233, 249, 255, 0.95), rgba(149, 210, 241, 0.4));
+    opacity: 0.85;
+    animation: rainFall linear forwards;
+}
+
+.grass-strip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 62px;
+    overflow: hidden;
+    background:
+        linear-gradient(180deg, #66bb72 0%, #4c9d5b 44%, #347847 100%);
+    border-top: 2px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 -8px 16px rgba(23, 78, 40, 0.2);
+}
+
+.grass-strip::before,
+.grass-strip::after {
+    content: '';
+    position: absolute;
+    left: -8%;
+    width: 116%;
+    pointer-events: none;
+}
+
+.grass-strip::before {
+    top: -12px;
+    height: 30px;
+    background:
+        repeating-linear-gradient(
+            78deg,
+            rgba(108, 193, 118, 0.95) 0 2px,
+            rgba(108, 193, 118, 0) 2px 8px,
+            rgba(70, 151, 81, 0.85) 8px 10px,
+            rgba(70, 151, 81, 0) 10px 16px
+        );
+    transform-origin: center bottom;
+    animation: grassSwayFront 5.6s ease-in-out infinite;
+}
+
+.grass-strip::after {
+    top: 6px;
+    height: 26px;
+    opacity: 0.7;
+    background:
+        repeating-linear-gradient(
+            102deg,
+            rgba(79, 142, 70, 0.8) 0 2px,
+            rgba(79, 142, 70, 0) 2px 9px,
+            rgba(47, 104, 57, 0.7) 9px 11px,
+            rgba(47, 104, 57, 0) 11px 16px
+        );
+    transform-origin: center bottom;
+    animation: grassSwayBack 7.4s ease-in-out infinite;
 }
 
 .collector-bucket {
@@ -334,6 +634,11 @@ body {
     z-index: 8;
     pointer-events: none;
     user-select: none;
+}
+
+.collector-bucket.bucket-frozen {
+    color: #b8d5e4;
+    filter: drop-shadow(0 0 8px rgba(227, 246, 255, 0.8));
 }
 
 .collector-bucket::before {
@@ -360,7 +665,7 @@ body {
     user-select: none;
     animation: dropFall linear forwards;
     transition: transform 0.12s ease;
-    z-index: 4;
+    z-index: 6;
 }
 
 /* Clean water drops */
@@ -401,6 +706,113 @@ body {
     50% {
         filter: brightness(1.12);
     }
+}
+
+@keyframes driftCloud {
+    0% {
+        transform: translateX(0) translateY(0) scale(var(--cloud-scale));
+    }
+    25% {
+        transform: translateX(37vw) translateY(-3px) scale(var(--cloud-scale));
+    }
+    55% {
+        transform: translateX(82vw) translateY(2px) scale(var(--cloud-scale));
+    }
+    100% {
+        transform: translateX(150vw) translateY(0) scale(var(--cloud-scale));
+    }
+}
+
+@keyframes grassSwayFront {
+    0%,
+    100% {
+        transform: rotate(0deg) translateX(0);
+    }
+    30% {
+        transform: rotate(1.3deg) translateX(6px);
+    }
+    60% {
+        transform: rotate(-1.1deg) translateX(-5px);
+    }
+}
+
+@keyframes grassSwayBack {
+    0%,
+    100% {
+        transform: rotate(0deg) translateX(0);
+    }
+    40% {
+        transform: rotate(-1deg) translateX(-4px);
+    }
+    70% {
+        transform: rotate(0.9deg) translateX(5px);
+    }
+}
+
+@keyframes rainFall {
+    from {
+        transform: translateY(0) translateX(0) rotate(8deg);
+        opacity: 0.95;
+    }
+    to {
+        transform: translateY(110%) translateX(8px) rotate(8deg);
+        opacity: 0;
+    }
+}
+
+@keyframes lightningPulse {
+    0% {
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.88;
+    }
+    24% {
+        opacity: 0.08;
+    }
+    44% {
+        opacity: 0.72;
+    }
+    68% {
+        opacity: 0.1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes lightningBoltFlicker {
+    0% {
+        opacity: 0;
+    }
+    14% {
+        opacity: 1;
+    }
+    34% {
+        opacity: 0.12;
+    }
+    54% {
+        opacity: 0.9;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+#game-container.storm-active .storm-cloud {
+    opacity: var(--storm-cloud-visibility);
+}
+
+#game-container.storm-active .cloud {
+    opacity: 0.7;
+}
+
+#game-container.lightning-active .lightning-flash {
+    animation: lightningPulse 1s ease-out;
+}
+
+#game-container.lightning-active .lightning-bolt {
+    animation: lightningBoltFlicker 1s ease-out;
 }
 
 /* ==========================================
@@ -631,6 +1043,25 @@ body[data-theme="dark"] .theme-toggle {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
+body[data-theme="dark"] .weather-mode-select {
+    background: rgba(35, 55, 72, 0.95);
+    color: #ffffff;
+    border-color: #3b5568;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    color-scheme: dark;
+}
+
+body[data-theme="dark"] .weather-control {
+    border-color: #3b5568;
+    background: linear-gradient(180deg, #2d4254 0%, #233748 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+body[data-theme="dark"] .weather-mode-select option {
+    background: #233748;
+    color: #ffffff;
+}
+
 body[data-theme="dark"] .stat-card {
     background: #223748;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.24);
@@ -662,10 +1093,57 @@ body[data-theme="dark"] .btn-secondary {
 body[data-theme="dark"] #game-container {
     border-color: #3b5568;
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
-        repeating-radial-gradient(circle at 20px 20px, rgba(255, 255, 255, 0.02) 0 2px, transparent 2px 30px),
-        repeating-linear-gradient(135deg, rgba(47, 111, 149, 0.05) 0 1px, transparent 1px 26px),
-        #1e3445;
+        linear-gradient(180deg, #2d4d62 0%, #213a4a 100%);
+}
+
+body[data-theme="dark"] .sky-layer {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
+        repeating-radial-gradient(circle at 24px 24px, rgba(255, 255, 255, 0.02) 0 2px, transparent 2px 34px);
+}
+
+body[data-theme="dark"] .cloud {
+    background:
+        radial-gradient(circle at 22% 34%, rgba(177, 203, 220, 0.7) 0 28%, rgba(177, 203, 220, 0) 72%),
+        radial-gradient(circle at 52% 26%, rgba(165, 192, 211, 0.72) 0 33%, rgba(165, 192, 211, 0) 74%),
+        radial-gradient(circle at 80% 40%, rgba(146, 176, 199, 0.66) 0 27%, rgba(146, 176, 199, 0) 70%),
+        linear-gradient(180deg, rgba(170, 197, 215, 0.72), rgba(136, 165, 187, 0.6));
+    filter: drop-shadow(0 6px 12px rgba(8, 14, 22, 0.22));
+}
+
+body[data-theme="dark"] .cloud::before {
+    background: radial-gradient(circle at 38% 38%, rgba(184, 210, 227, 0.8), rgba(142, 173, 196, 0.58) 68%, rgba(142, 173, 196, 0.08) 100%);
+}
+
+body[data-theme="dark"] .cloud::after {
+    background: radial-gradient(circle at 36% 32%, rgba(172, 201, 220, 0.78), rgba(126, 160, 184, 0.56) 70%, rgba(126, 160, 184, 0.08) 100%);
+}
+
+body[data-theme="dark"] .grass-strip {
+    background:
+        linear-gradient(180deg, #4c9a57 0%, #377543 44%, #275934 100%);
+}
+
+body[data-theme="dark"] .grass-strip::before {
+    background:
+        repeating-linear-gradient(
+            78deg,
+            rgba(81, 154, 90, 0.85) 0 2px,
+            rgba(81, 154, 90, 0) 2px 8px,
+            rgba(56, 118, 65, 0.78) 8px 10px,
+            rgba(56, 118, 65, 0) 10px 16px
+        );
+}
+
+body[data-theme="dark"] .grass-strip::after {
+    background:
+        repeating-linear-gradient(
+            102deg,
+            rgba(52, 104, 60, 0.8) 0 2px,
+            rgba(52, 104, 60, 0) 2px 9px,
+            rgba(36, 79, 44, 0.7) 9px 11px,
+            rgba(36, 79, 44, 0) 11px 16px
+        );
 }
 
 body[data-theme="dark"] .header-top-row {
@@ -684,6 +1162,10 @@ body[data-theme="dark"] .header-top-row {
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
 
+    .weather-mode-select:hover {
+        background: linear-gradient(180deg, #ffffff 0%, #e6f4fb 100%);
+    }
+
     .drop.clean:hover,
     .drop.polluted:hover,
     .drop.bonus:hover {
@@ -691,6 +1173,10 @@ body[data-theme="dark"] .header-top-row {
     }
 
     body[data-theme="dark"] .theme-toggle:hover {
+        background: linear-gradient(180deg, #334a5f 0%, #294153 100%);
+    }
+
+    body[data-theme="dark"] .weather-mode-select:hover {
         background: linear-gradient(180deg, #334a5f 0%, #294153 100%);
     }
 }
@@ -767,10 +1253,29 @@ body[data-theme="dark"] .impact-footer {
 
     .header-top-row {
         align-items: center;
+        gap: 8px;
+        padding: 8px;
     }
 
     .theme-label {
         font-size: 0.68rem;
+    }
+
+    .weather-mode-label {
+        font-size: 0.62rem;
+    }
+
+    .weather-mode-select {
+        min-height: 30px;
+        padding: 5px 8px;
+        font-size: 0.62rem;
+        letter-spacing: 0.04em;
+    }
+
+    .weather-control {
+        min-height: 46px;
+        padding: 5px 8px;
+        gap: 6px;
     }
 
     .theme-toggle {
@@ -809,7 +1314,7 @@ body[data-theme="dark"] .impact-footer {
 
     .button-group {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
     }
 
@@ -831,6 +1336,15 @@ body[data-theme="dark"] .impact-footer {
         height: 52px;
         font-size: 52px;
         bottom: 18px;
+    }
+
+    .grass-strip {
+        height: 54px;
+    }
+
+    .lightning-bolt {
+        font-size: 74px;
+        top: 17%;
     }
 
     .collector-bucket::before {

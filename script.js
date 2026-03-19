@@ -23,6 +23,14 @@ let gameState = {
     bucketFriction: 0.9,        // Friction when no input is pressed
     touchTargetX: null,         // Active touch target in px while dragging
     touchIsActive: false,       // Whether a touch drag is currently controlling the bucket
+    bucketFrozenUntil: 0,       // Timestamp until which lightning freezes movement
+    bucketFreezeTimeout: null,  // Timeout handle to clear freeze visual state safely
+    stormActive: false,         // Whether a storm is currently active
+    stormTimeout: null,         // Timeout handle for the next random storm trigger
+    stormEndTimeout: null,      // Timeout handle for ending current storm
+    lightningTimeout: null,     // Timeout handle to remove lightning flash class
+    stormRainInterval: null,    // Interval handle for spawning rain particles
+    weatherMode: 'dramatic',    // User selected weather profile
     hasBucketPosition: false,   // Whether initial placement has been done
 };
 
@@ -47,7 +55,53 @@ const elements = {
     playAgainBtn: document.getElementById('play-again-btn'),
     confettiCanvas: document.getElementById('confetti-canvas'),
     themeToggle: document.getElementById('theme-toggle'),
+    weatherModeSelect: document.getElementById('weather-mode'),
     bucket: document.getElementById('collector-bucket'),
+    rainLayer: document.getElementById('rain-layer'),
+    lightningFlash: document.getElementById('lightning-flash'),
+    lightningBolt: document.getElementById('lightning-bolt'),
+};
+
+const weatherPresets = {
+    calm: {
+        stormDelayMin: 10000,
+        stormDelayMax: 14000,
+        stormDurationMs: 2200,
+        lightningFlashMs: 900,
+        freezeMs: 850,
+        rainBurstCount: 8,
+        rainSpawnIntervalMs: 170,
+        rainDurationMin: 0.55,
+        rainDurationMax: 0.9,
+        rainOpacityMin: 0.35,
+        rainOpacityMax: 0.65,
+    },
+    dramatic: {
+        stormDelayMin: 8000,
+        stormDelayMax: 12000,
+        stormDurationMs: 2800,
+        lightningFlashMs: 1000,
+        freezeMs: 1000,
+        rainBurstCount: 14,
+        rainSpawnIntervalMs: 130,
+        rainDurationMin: 0.45,
+        rainDurationMax: 0.85,
+        rainOpacityMin: 0.45,
+        rainOpacityMax: 0.9,
+    },
+    hard: {
+        stormDelayMin: 8000,
+        stormDelayMax: 12000,
+        stormDurationMs: 2800,
+        lightningFlashMs: 1000,
+        freezeMs: 1400,
+        rainBurstCount: 14,
+        rainSpawnIntervalMs: 130,
+        rainDurationMin: 0.45,
+        rainDurationMax: 0.85,
+        rainOpacityMin: 0.45,
+        rainOpacityMax: 0.9,
+    },
 };
 
 const inputState = {
@@ -88,6 +142,35 @@ function initializeThemeToggle() {
     }
 }
 
+function getActiveWeatherPreset() {
+    return weatherPresets[gameState.weatherMode] || weatherPresets.dramatic;
+}
+
+function applyWeatherMode(mode) {
+    const selectedMode = weatherPresets[mode] ? mode : 'dramatic';
+    gameState.weatherMode = selectedMode;
+
+    elements.gameContainer.classList.remove('weather-calm', 'weather-dramatic', 'weather-hard');
+    elements.gameContainer.classList.add(`weather-${selectedMode}`);
+
+    if (elements.weatherModeSelect) {
+        elements.weatherModeSelect.value = selectedMode;
+    }
+}
+
+function initializeWeatherModeControl() {
+    const savedMode = localStorage.getItem('drop-for-change-weather-mode');
+    applyWeatherMode(savedMode || 'dramatic');
+
+    if (elements.weatherModeSelect) {
+        elements.weatherModeSelect.addEventListener('change', (event) => {
+            const selectedMode = event.target.value;
+            applyWeatherMode(selectedMode);
+            localStorage.setItem('drop-for-change-weather-mode', gameState.weatherMode);
+        });
+    }
+}
+
 // ==========================================
 // EVENT LISTENERS - Attach buttons to game functions
 // ==========================================
@@ -96,6 +179,7 @@ elements.startBtn.addEventListener('click', startGame);
 elements.resetBtn.addEventListener('click', resetGame);
 elements.playAgainBtn.addEventListener('click', resetGame);
 initializeThemeToggle();
+initializeWeatherModeControl();
 initializeBucketControls();
 requestAnimationFrame(gameLoop);
 
@@ -128,6 +212,9 @@ function startGame() {
 
     // Update timer every second
     gameState.timerInterval = setInterval(tick, 1000);
+
+    // Start random weather events that make the world feel alive.
+    scheduleNextStorm();
 }
 
 /**
@@ -151,8 +238,13 @@ function resetGame() {
     gameState.bucketVelocity = 0;
     gameState.touchTargetX = null;
     gameState.touchIsActive = false;
+    gameState.bucketFrozenUntil = 0;
     inputState.leftPressed = false;
     inputState.rightPressed = false;
+
+    stopStormSystem();
+    clearRainParticles();
+    elements.bucket.classList.remove('bucket-frozen');
 
     // Remove all drops from game area
     const allDrops = document.querySelectorAll('.drop');
@@ -198,6 +290,7 @@ function endGame() {
     // Stop creating new drops
     clearInterval(gameState.dropInterval);
     clearInterval(gameState.timerInterval);
+    stopStormSystem();
 
     // Disable start button
     elements.startBtn.disabled = true;
@@ -501,6 +594,12 @@ function renderBucketPosition() {
 function updateBucketMovement() {
     ensureBucketPosition();
 
+    if (performance.now() < gameState.bucketFrozenUntil) {
+        // Lightning effect: briefly freeze movement for a short, readable penalty.
+        gameState.bucketVelocity = 0;
+        return;
+    }
+
     if (gameState.touchIsActive && gameState.touchTargetX !== null) {
         const distanceToTarget = gameState.touchTargetX - gameState.bucketX;
 
@@ -537,6 +636,141 @@ function updateBucketMovement() {
     if (gameState.bucketVelocity !== 0) {
         setBucketX(gameState.bucketX + gameState.bucketVelocity);
     }
+}
+
+// ==========================================
+// ENVIRONMENT + STORM SYSTEM
+// ==========================================
+
+function scheduleNextStorm() {
+    clearTimeout(gameState.stormTimeout);
+
+    if (!gameState.isRunning) {
+        return;
+    }
+
+    // Trigger storms at random intervals based on selected weather mode.
+    const preset = getActiveWeatherPreset();
+    const delayRange = Math.max(0, preset.stormDelayMax - preset.stormDelayMin);
+    const nextDelayMs = preset.stormDelayMin + Math.random() * delayRange;
+    gameState.stormTimeout = setTimeout(() => {
+        triggerStorm();
+    }, nextDelayMs);
+}
+
+function triggerStorm() {
+    if (!gameState.isRunning || gameState.stormActive) {
+        return;
+    }
+
+    gameState.stormActive = true;
+    elements.gameContainer.classList.add('storm-active');
+
+    const preset = getActiveWeatherPreset();
+
+    startRainParticles();
+    triggerLightningStrike();
+
+    clearTimeout(gameState.stormEndTimeout);
+    gameState.stormEndTimeout = setTimeout(() => {
+        endStorm();
+    }, preset.stormDurationMs);
+}
+
+function triggerLightningStrike() {
+    // Lightning trigger uses the active weather profile for timing and gameplay impact.
+    const preset = getActiveWeatherPreset();
+
+    elements.gameContainer.classList.remove('lightning-active');
+    void elements.gameContainer.offsetWidth;
+    elements.gameContainer.classList.add('lightning-active');
+
+    clearTimeout(gameState.lightningTimeout);
+    gameState.lightningTimeout = setTimeout(() => {
+        elements.gameContainer.classList.remove('lightning-active');
+    }, preset.lightningFlashMs);
+
+    // Storm gameplay effect: lightning freezes bucket movement briefly.
+    freezeBucketFor(preset.freezeMs);
+}
+
+function freezeBucketFor(durationMs) {
+    const freezeUntil = performance.now() + durationMs;
+    gameState.bucketFrozenUntil = Math.max(gameState.bucketFrozenUntil, freezeUntil);
+    gameState.bucketVelocity = 0;
+    elements.bucket.classList.add('bucket-frozen');
+
+    clearTimeout(gameState.bucketFreezeTimeout);
+    gameState.bucketFreezeTimeout = setTimeout(() => {
+        elements.bucket.classList.remove('bucket-frozen');
+    }, durationMs);
+}
+
+function startRainParticles() {
+    clearInterval(gameState.stormRainInterval);
+    const preset = getActiveWeatherPreset();
+
+    const spawnBatch = () => {
+        if (!gameState.stormActive || !elements.rainLayer) {
+            return;
+        }
+
+        for (let i = 0; i < preset.rainBurstCount; i++) {
+            const rainDrop = document.createElement('span');
+            rainDrop.className = 'rain-drop';
+            rainDrop.style.left = `${Math.random() * 100}%`;
+
+            const durationRange = Math.max(0, preset.rainDurationMax - preset.rainDurationMin);
+            const duration = preset.rainDurationMin + Math.random() * durationRange;
+            rainDrop.style.animationDuration = `${duration}s`;
+            const opacityRange = Math.max(0, preset.rainOpacityMax - preset.rainOpacityMin);
+            rainDrop.style.opacity = `${preset.rainOpacityMin + Math.random() * opacityRange}`;
+
+            elements.rainLayer.appendChild(rainDrop);
+
+            setTimeout(() => {
+                rainDrop.remove();
+            }, Math.ceil(duration * 1000));
+        }
+    };
+
+    spawnBatch();
+    gameState.stormRainInterval = setInterval(spawnBatch, preset.rainSpawnIntervalMs);
+}
+
+function clearRainParticles() {
+    if (elements.rainLayer) {
+        elements.rainLayer.innerHTML = '';
+    }
+}
+
+function endStorm() {
+    gameState.stormActive = false;
+    elements.gameContainer.classList.remove('storm-active');
+
+    clearInterval(gameState.stormRainInterval);
+    gameState.stormRainInterval = null;
+    clearRainParticles();
+
+    scheduleNextStorm();
+}
+
+function stopStormSystem() {
+    clearTimeout(gameState.stormTimeout);
+    clearTimeout(gameState.stormEndTimeout);
+    clearTimeout(gameState.lightningTimeout);
+    clearTimeout(gameState.bucketFreezeTimeout);
+    clearInterval(gameState.stormRainInterval);
+
+    gameState.stormActive = false;
+    gameState.stormTimeout = null;
+    gameState.stormEndTimeout = null;
+    gameState.lightningTimeout = null;
+    gameState.bucketFreezeTimeout = null;
+    gameState.stormRainInterval = null;
+
+    elements.gameContainer.classList.remove('storm-active');
+    elements.gameContainer.classList.remove('lightning-active');
 }
 
 function isDropCollected(dropRect, bucketRect) {
