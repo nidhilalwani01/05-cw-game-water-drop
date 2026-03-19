@@ -181,13 +181,16 @@ body {
 
 .org-brand:hover .org-name,
 .org-brand:focus-visible .org-name {
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    text-decoration: none;
 }
 
 .org-brand:focus-visible {
-    outline: 3px solid rgba(10, 74, 122, 0.25);
-    outline-offset: 2px;
+    outline: none;
+}
+
+.org-brand:focus,
+.org-brand:active {
+    outline: none;
 }
 
 .org-logo {
@@ -1150,6 +1153,61 @@ body {
     font-weight: 700;
 }
 
+.charity-callout {
+    margin-top: 10px;
+    border: 1px solid color-mix(in srgb, var(--cw-water-blue) 38%, #d3e7f1 62%);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: linear-gradient(180deg, rgba(240, 249, 255, 0.88), rgba(255, 255, 255, 0.88));
+}
+
+.charity-callout h4 {
+    margin: 0;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--cw-deep-blue) 82%, #7398b0 18%);
+}
+
+.instructions .charity-callout p {
+    display: block;
+    margin: 6px 0 10px;
+    font-size: 0.82rem;
+    color: color-mix(in srgb, #2a3f4f 78%, #8ca2b2 22%);
+    line-height: 1.35;
+}
+
+.donate-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid #efbc00;
+    background: #ffc907;
+    color: #1f2b34;
+    text-decoration: none;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: filter 0.18s ease, transform 0.18s ease;
+}
+
+.donate-link:focus,
+.donate-link:active,
+.donate-link:focus-visible,
+.donate-link:visited {
+    color: #1f2b34;
+    text-decoration: none;
+}
+
+.donate-link:focus-visible {
+    outline: 3px solid rgba(10, 74, 122, 0.22);
+    outline-offset: 2px;
+}
+
 .drop-icon {
     width: 20px;
     height: 20px;
@@ -1379,6 +1437,24 @@ body[data-theme="dark"] .instructions {
     background: rgba(24, 38, 51, 0.48);
 }
 
+body[data-theme="dark"] .charity-callout {
+    border-color: #3f6075;
+    background: linear-gradient(180deg, rgba(32, 54, 71, 0.82), rgba(25, 43, 57, 0.82));
+}
+
+body[data-theme="dark"] .charity-callout h4 {
+    color: #d5e9f6;
+}
+
+body[data-theme="dark"] .instructions .charity-callout p {
+    color: #c9dbe7;
+}
+
+body[data-theme="dark"] .donate-link,
+body[data-theme="dark"] .donate-link:visited {
+    color: #0f1a24;
+}
+
 body[data-theme="dark"] .impact-footer {
     color: #8ca1b0;
     opacity: 0.72;
@@ -1413,6 +1489,11 @@ body[data-theme="dark"] .drop.bonus {
     .weather-mode-select:hover {
         background: #f6fbff;
         border-color: color-mix(in srgb, var(--border-main) 70%, #b7d5e4 30%);
+    }
+
+    .donate-link:hover {
+        filter: brightness(0.98);
+        transform: translateY(-1px);
     }
 
     .drop.clean:hover,
@@ -1567,6 +1648,15 @@ body[data-theme="dark"] .impact-footer {
         align-items: flex-start;
         font-size: 0.88rem;
         margin: 5px 0;
+    }
+
+    .instructions .charity-callout p {
+        font-size: 0.86rem;
+    }
+
+    .donate-link {
+        width: 100%;
+        font-size: 0.72rem;
     }
 
     .collector-bucket {
