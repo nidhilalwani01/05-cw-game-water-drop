@@ -22,6 +22,7 @@ let gameState = {
     bucketMaxSpeed: 13,         // Velocity cap to keep control predictable
     bucketFriction: 0.9,        // Friction when no input is pressed
     touchTargetX: null,         // Active touch target in px while dragging
+    touchIsActive: false,       // Whether a touch drag is currently controlling the bucket
     hasBucketPosition: false,   // Whether initial placement has been done
 };
 
@@ -149,6 +150,7 @@ function resetGame() {
     gameState.timeRemaining = 60;
     gameState.bucketVelocity = 0;
     gameState.touchTargetX = null;
+    gameState.touchIsActive = false;
     inputState.leftPressed = false;
     inputState.rightPressed = false;
 
@@ -429,11 +431,16 @@ function initializeBucketControls() {
         const containerRect = elements.gameContainer.getBoundingClientRect();
         const bucketWidth = elements.bucket.offsetWidth;
         gameState.touchTargetX = clientX - containerRect.left - (bucketWidth / 2);
+
+        // Move immediately on drag updates so thumb control feels direct.
+        setBucketX(gameState.touchTargetX);
+        gameState.bucketVelocity = 0;
     };
 
     elements.gameContainer.addEventListener('touchstart', (event) => {
         const touch = event.touches[0];
         if (!touch) return;
+        gameState.touchIsActive = true;
         moveToTouchX(touch.clientX);
         event.preventDefault();
     }, { passive: false });
@@ -447,10 +454,14 @@ function initializeBucketControls() {
 
     elements.gameContainer.addEventListener('touchend', () => {
         gameState.touchTargetX = null;
+        gameState.touchIsActive = false;
+        gameState.bucketVelocity = 0;
     });
 
     elements.gameContainer.addEventListener('touchcancel', () => {
         gameState.touchTargetX = null;
+        gameState.touchIsActive = false;
+        gameState.bucketVelocity = 0;
     });
 }
 
@@ -490,18 +501,26 @@ function renderBucketPosition() {
 function updateBucketMovement() {
     ensureBucketPosition();
 
+    if (gameState.touchIsActive && gameState.touchTargetX !== null) {
+        const distanceToTarget = gameState.touchTargetX - gameState.bucketX;
+
+        // Apply light easing between touch events for smooth visual tracking.
+        if (Math.abs(distanceToTarget) > 0.5) {
+            setBucketX(gameState.bucketX + distanceToTarget * 0.45);
+        } else {
+            setBucketX(gameState.touchTargetX);
+        }
+
+        gameState.bucketVelocity = 0;
+        return;
+    }
+
     let direction = 0;
     if (inputState.leftPressed) direction -= 1;
     if (inputState.rightPressed) direction += 1;
 
     if (direction !== 0) {
         gameState.bucketVelocity += direction * gameState.bucketAcceleration;
-    }
-
-    if (gameState.touchTargetX !== null) {
-        // Spring-like pull toward finger position for smooth touch control.
-        const distanceToTarget = gameState.touchTargetX - gameState.bucketX;
-        gameState.bucketVelocity += distanceToTarget * 0.12;
     }
 
     if (direction === 0 && gameState.touchTargetX === null) {
