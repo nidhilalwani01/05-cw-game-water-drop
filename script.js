@@ -15,6 +15,14 @@ let gameState = {
     highScore: 0,               // Best score saved across rounds
     timerInterval: null,        // Store timer so we can stop it
     dropInterval: null,         // Store drop creation so we can stop it
+    bucketX: 0,                 // Horizontal bucket position in px
+    bucketSpeed: 9,             // How fast the bucket moves with keyboard
+    bucketVelocity: 0,          // Current horizontal velocity for smooth movement
+    bucketAcceleration: 1.1,    // Keyboard acceleration applied each frame
+    bucketMaxSpeed: 13,         // Velocity cap to keep control predictable
+    bucketFriction: 0.9,        // Friction when no input is pressed
+    touchTargetX: null,         // Active touch target in px while dragging
+    hasBucketPosition: false,   // Whether initial placement has been done
 };
 
 // Load the saved high score once when the script starts.
@@ -38,6 +46,12 @@ const elements = {
     playAgainBtn: document.getElementById('play-again-btn'),
     confettiCanvas: document.getElementById('confetti-canvas'),
     themeToggle: document.getElementById('theme-toggle'),
+    bucket: document.getElementById('collector-bucket'),
+};
+
+const inputState = {
+    leftPressed: false,
+    rightPressed: false,
 };
 
 // ==========================================
@@ -81,6 +95,8 @@ elements.startBtn.addEventListener('click', startGame);
 elements.resetBtn.addEventListener('click', resetGame);
 elements.playAgainBtn.addEventListener('click', resetGame);
 initializeThemeToggle();
+initializeBucketControls();
+requestAnimationFrame(gameLoop);
 
 // ==========================================
 // MAIN GAME FUNCTIONS
@@ -104,6 +120,7 @@ function startGame() {
     updateScore();
     updateTimer();
     elements.startBtn.disabled = true;
+    ensureBucketPosition();
 
     // Create drops every 800ms (slightly faster for more challenge)
     gameState.dropInterval = setInterval(createDrop, 800);
@@ -130,6 +147,10 @@ function resetGame() {
     // Reset state
     gameState.score = 0;
     gameState.timeRemaining = 60;
+    gameState.bucketVelocity = 0;
+    gameState.touchTargetX = null;
+    inputState.leftPressed = false;
+    inputState.rightPressed = false;
 
     // Remove all drops from game area
     const allDrops = document.querySelectorAll('.drop');
@@ -144,6 +165,7 @@ function resetGame() {
     // Update all displays
     updateScore();
     updateTimer();
+    ensureBucketPosition();
 
     // Re-enable start button
     elements.startBtn.disabled = false;
@@ -253,7 +275,7 @@ function createDrop() {
         // 10% chance: Bonus jerry can
         dropType = 'bonus';
         points = 50;
-        size = 50 + Math.random() * 15; // 50-65px
+        size = 66 + Math.random() * 16; // 66-82px
     }
 
     // Store points value on the element
@@ -272,12 +294,6 @@ function createDrop() {
     // Vary fall speed for visual interest (2-4 seconds)
     const fallSpeed = 2 + Math.random() * 2;
     drop.style.animationDuration = fallSpeed + 's';
-
-    // Add click listener to score points
-    drop.addEventListener('click', (e) => {
-        scorePoints(drop, points);
-        e.stopPropagation(); // Prevent event bubbling
-    });
 
     // Add the drop to the game area
     elements.gameContainer.appendChild(drop);
@@ -299,6 +315,12 @@ function createDrop() {
  * - Shows feedback message
  */
 function scorePoints(drop, points) {
+    if (drop.classList.contains('collected')) {
+        return;
+    }
+
+    drop.classList.add('collected');
+
     // Update score (never go below 0)
     gameState.score += points;
     if (gameState.score < 0) {
@@ -322,7 +344,6 @@ function scorePoints(drop, points) {
     showPointsFeedback(drop, points);
 
     // Remove the clicked drop
-    drop.removeEventListener('animationend', null); // Remove animation listener
     drop.style.animation = 'none'; // Stop falling animation
     drop.style.opacity = '0'; // Fade out
     drop.style.transform = 'scale(0.5)'; // Shrink
@@ -335,10 +356,13 @@ function scorePoints(drop, points) {
  * Shows floating text feedback when points are scored
  */
 function showPointsFeedback(drop, points) {
+    const containerRect = elements.gameContainer.getBoundingClientRect();
+    const dropRect = drop.getBoundingClientRect();
+
     const feedback = document.createElement('div');
     feedback.style.position = 'absolute';
-    feedback.style.left = drop.style.left;
-    feedback.style.top = drop.style.top;
+    feedback.style.left = `${dropRect.left - containerRect.left + (dropRect.width / 2)}px`;
+    feedback.style.top = `${dropRect.top - containerRect.top}px`;
     feedback.style.fontSize = '24px';
     feedback.style.fontWeight = 'bold';
     feedback.style.pointerEvents = 'none';
@@ -369,6 +393,160 @@ function showPointsFeedback(drop, points) {
     }
 
     setTimeout(() => feedback.remove(), 1000);
+}
+
+// ==========================================
+// BUCKET CONTROLS + COLLISION LOOP
+// ==========================================
+
+function initializeBucketControls() {
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowLeft') {
+            inputState.leftPressed = true;
+            event.preventDefault();
+        }
+
+        if (event.key === 'ArrowRight') {
+            inputState.rightPressed = true;
+            event.preventDefault();
+        }
+    });
+
+    window.addEventListener('keyup', (event) => {
+        if (event.key === 'ArrowLeft') {
+            inputState.leftPressed = false;
+        }
+
+        if (event.key === 'ArrowRight') {
+            inputState.rightPressed = false;
+        }
+    });
+
+    const moveToTouchX = (clientX) => {
+        const containerRect = elements.gameContainer.getBoundingClientRect();
+        const bucketWidth = elements.bucket.offsetWidth;
+        gameState.touchTargetX = clientX - containerRect.left - (bucketWidth / 2);
+    };
+
+    elements.gameContainer.addEventListener('touchstart', (event) => {
+        const touch = event.touches[0];
+        if (!touch) return;
+        moveToTouchX(touch.clientX);
+        event.preventDefault();
+    }, { passive: false });
+
+    elements.gameContainer.addEventListener('touchmove', (event) => {
+        const touch = event.touches[0];
+        if (!touch) return;
+        moveToTouchX(touch.clientX);
+        event.preventDefault();
+    }, { passive: false });
+
+    elements.gameContainer.addEventListener('touchend', () => {
+        gameState.touchTargetX = null;
+    });
+
+    elements.gameContainer.addEventListener('touchcancel', () => {
+        gameState.touchTargetX = null;
+    });
+}
+
+function ensureBucketPosition() {
+    if (gameState.hasBucketPosition) {
+        return;
+    }
+
+    const containerWidth = elements.gameContainer.clientWidth;
+    const bucketWidth = elements.bucket.offsetWidth;
+    gameState.bucketX = (containerWidth - bucketWidth) / 2;
+    gameState.hasBucketPosition = true;
+    renderBucketPosition();
+}
+
+function setBucketX(nextX) {
+    const containerWidth = elements.gameContainer.clientWidth;
+    const bucketWidth = elements.bucket.offsetWidth;
+    const maxX = Math.max(0, containerWidth - bucketWidth);
+    const clampedX = Math.min(maxX, Math.max(0, nextX));
+    gameState.bucketX = clampedX;
+
+    // Cancel outward velocity when the bucket hits either boundary.
+    if ((clampedX <= 0 && gameState.bucketVelocity < 0) || (clampedX >= maxX && gameState.bucketVelocity > 0)) {
+        gameState.bucketVelocity = 0;
+    }
+
+    gameState.hasBucketPosition = true;
+    renderBucketPosition();
+}
+
+function renderBucketPosition() {
+    elements.bucket.style.left = `${gameState.bucketX}px`;
+    elements.bucket.style.transform = 'none';
+}
+
+function updateBucketMovement() {
+    ensureBucketPosition();
+
+    let direction = 0;
+    if (inputState.leftPressed) direction -= 1;
+    if (inputState.rightPressed) direction += 1;
+
+    if (direction !== 0) {
+        gameState.bucketVelocity += direction * gameState.bucketAcceleration;
+    }
+
+    if (gameState.touchTargetX !== null) {
+        // Spring-like pull toward finger position for smooth touch control.
+        const distanceToTarget = gameState.touchTargetX - gameState.bucketX;
+        gameState.bucketVelocity += distanceToTarget * 0.12;
+    }
+
+    if (direction === 0 && gameState.touchTargetX === null) {
+        gameState.bucketVelocity *= gameState.bucketFriction;
+    }
+
+    const maxSpeed = gameState.bucketMaxSpeed;
+    gameState.bucketVelocity = Math.max(-maxSpeed, Math.min(maxSpeed, gameState.bucketVelocity));
+
+    if (Math.abs(gameState.bucketVelocity) < 0.05) {
+        gameState.bucketVelocity = 0;
+    }
+
+    if (gameState.bucketVelocity !== 0) {
+        setBucketX(gameState.bucketX + gameState.bucketVelocity);
+    }
+}
+
+function isDropCollected(dropRect, bucketRect) {
+    const overlapX = dropRect.right > bucketRect.left && dropRect.left < bucketRect.right;
+    const dropBottomInCatchZone = dropRect.bottom >= bucketRect.top && dropRect.top < bucketRect.bottom;
+    return overlapX && dropBottomInCatchZone;
+}
+
+function checkDropCollisions() {
+    const bucketRect = elements.bucket.getBoundingClientRect();
+    const drops = document.querySelectorAll('.drop');
+
+    drops.forEach((drop) => {
+        if (drop.classList.contains('collected')) {
+            return;
+        }
+
+        const dropRect = drop.getBoundingClientRect();
+
+        if (isDropCollected(dropRect, bucketRect)) {
+            scorePoints(drop, Number(drop.dataset.points));
+        }
+    });
+}
+
+function gameLoop() {
+    if (gameState.isRunning) {
+        updateBucketMovement();
+        checkDropCollisions();
+    }
+
+    requestAnimationFrame(gameLoop);
 }
 
 /**
@@ -545,4 +723,7 @@ window.addEventListener('resize', () => {
         elements.confettiCanvas.width = window.innerWidth;
         elements.confettiCanvas.height = window.innerHeight;
     }
+
+    gameState.hasBucketPosition = false;
+    ensureBucketPosition();
 });

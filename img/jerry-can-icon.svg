@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Jerry can icon">
+  <defs>
+    <linearGradient id="canBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFD43B"/>
+      <stop offset="100%" stop-color="#FFC907"/>
+    </linearGradient>
+    <linearGradient id="canEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#EAB800"/>
+      <stop offset="100%" stop-color="#D5A300"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M44 16h30c4 0 7 3 7 7v8h9c4 0 7 3 7 7v71c0 7-6 13-13 13H35c-7 0-13-6-13-13V29c0-7 6-13 13-13h9v0z" fill="url(#canBody)" stroke="url(#canEdge)" stroke-width="5" stroke-linejoin="round"/>
+
+  <path d="M81 23v8h9" fill="none" stroke="#D5A300" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M44 51l14 14m0-14L44 65m26-14l14 14m0-14L70 65" stroke="#D5A300" stroke-width="6" stroke-linecap="round"/>
+
+  <path d="M33 37h53" stroke="#FFE988" stroke-width="4" opacity="0.6"/>
+</svg>

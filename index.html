@@ -47,7 +47,9 @@
         </section>
 
         <!-- Main game area where drops fall -->
-        <section id="game-container" aria-label="Water zone"></section>
+        <section id="game-container" aria-label="Water zone">
+            <div id="collector-bucket" class="collector-bucket" aria-hidden="true"></div>
+        </section>
 
         <!-- Game over/win message (hidden until game ends) -->
         <div id="game-over-modal" class="modal hidden">
@@ -65,9 +67,10 @@
         <!-- Game instructions -->
         <section class="instructions" aria-label="How to play">
             <h3>Your Mission</h3>
-            <p><span class="drop-icon clean"></span> <strong>Clean Water</strong> - You collected clean water! (+10)</p>
-            <p><span class="drop-icon bonus"></span> <strong>Jerry Can Bonus</strong> - Amazing! You helped bring clean water closer. (+50)</p>
-            <p><span class="drop-icon polluted"></span> <strong>Polluted Drop</strong> - That drop was polluted - try another. (-20)</p>
+            <p class="mission-tip"><strong>Move the bucket</strong> with left/right arrow keys or slide your thumb left and right.</p>
+            <p class="legend-item"><span class="drop-icon clean"></span> <strong>Clean Water</strong> - You collected clean water! (+10)</p>
+            <p class="legend-item"><span class="drop-icon bonus"></span> <strong>Jerry Can Bonus</strong> - Amazing! You helped bring clean water closer. (+50)</p>
+            <p class="legend-item"><span class="drop-icon polluted"></span> <strong>Polluted Drop</strong> - That drop was polluted - try another. (-20)</p>
             <p class="goal-text">Reach 150 points to help bring clean water closer.</p>
         </section>
 
