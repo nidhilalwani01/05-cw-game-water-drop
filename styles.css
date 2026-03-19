@@ -13,6 +13,8 @@
     --cw-white: #FFFFFF;
     --cw-polluted: #9A907E;
     --cw-polluted-dark: #7F7564;
+    --cw-navy: #1F2B34;
+    --cw-sky: #CFE9F4;
     --bg-main: var(--cw-cream);
     --bg-wrapper: var(--cw-white);
     --text-main: var(--cw-black);
@@ -21,6 +23,7 @@
     --card-shadow: 0 6px 14px rgba(10, 74, 122, 0.08);
     --radius-main: 22px;
     --glass-bg: rgba(255, 255, 255, 0.94);
+    --brand-accent: linear-gradient(90deg, #ffc907 0%, #ffdc63 35%, #7eb7cf 100%);
 }
 
 * {
@@ -60,9 +63,10 @@ body {
     line-height: 1.45;
     color: var(--text-main);
     background:
-        linear-gradient(180deg, rgba(242, 233, 216, 0.66), rgba(242, 233, 216, 0.7)),
-        radial-gradient(circle at 15% 0%, rgba(255, 201, 7, 0.32), transparent 32%),
-        radial-gradient(circle at 100% 100%, rgba(119, 168, 187, 0.35), transparent 40%),
+        linear-gradient(180deg, rgba(242, 233, 216, 0.6), rgba(242, 233, 216, 0.72)),
+        radial-gradient(circle at 12% -8%, rgba(255, 201, 7, 0.34), transparent 34%),
+        radial-gradient(circle at 92% 100%, rgba(119, 168, 187, 0.35), transparent 42%),
+        repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0 2px, rgba(255, 255, 255, 0) 2px 12px),
         url("img/background-photo.png") center / cover no-repeat,
         var(--bg-main);
 }
@@ -74,10 +78,25 @@ body {
     background: var(--glass-bg);
     border: 1px solid color-mix(in srgb, var(--border-main) 80%, #ffffff 20%);
     border-radius: var(--radius-main);
-    padding: 22px;
+    padding: 24px;
     display: grid;
-    gap: 12px;
-    box-shadow: 0 12px 28px rgba(10, 74, 122, 0.12);
+    gap: 14px;
+    box-shadow:
+        0 18px 38px rgba(10, 74, 122, 0.14),
+        0 2px 0 rgba(255, 255, 255, 0.7) inset;
+    position: relative;
+    overflow: hidden;
+}
+
+.game-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: var(--brand-accent);
+    pointer-events: none;
 }
 
 /* ==========================================
@@ -156,8 +175,9 @@ body {
 
 .header-section {
     display: grid;
-    gap: 6px;
+    gap: 8px;
     text-align: center;
+    padding-top: 2px;
 }
 
 .org-brand {
@@ -167,10 +187,10 @@ body {
     gap: 10px;
     width: fit-content;
     margin: 2px auto 4px;
-    padding: 4px 10px;
+    padding: 6px 12px;
     border-radius: 999px;
-    border: none;
-    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--cw-water-blue) 30%, #d7eaf2 70%);
+    background: color-mix(in srgb, #ffffff 86%, var(--cw-sky) 14%);
 }
 
 .org-brand,
@@ -213,15 +233,16 @@ body {
     color: var(--cw-deep-blue);
     font-family: "Fraunces", Georgia, serif;
     font-size: clamp(2.2rem, 4.5vw, 3.35rem);
-    letter-spacing: 0.01em;
+    letter-spacing: 0.008em;
     text-transform: none;
     line-height: 1.1;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .mission-statement {
     font-size: clamp(0.96rem, 2vw, 1.08rem);
     color: #243746;
-    line-height: 1.4;
+    line-height: 1.45;
     max-width: 680px;
     margin: 0 auto;
 }
@@ -241,17 +262,17 @@ body {
 .scoreboard {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    gap: 12px;
     align-items: stretch;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
 }
 
 .stat-card {
     border: 1px solid color-mix(in srgb, var(--border-main) 78%, #cde2ee 22%);
-    border-radius: 14px;
+    border-radius: 16px;
     padding: 12px 14px;
-    background: rgba(255, 255, 255, 0.97);
-    box-shadow: 0 6px 16px rgba(10, 74, 122, 0.12);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 252, 255, 0.95));
+    box-shadow: 0 8px 18px rgba(10, 74, 122, 0.1);
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -263,7 +284,7 @@ body {
 
 .stat-card:first-child {
     border-color: color-mix(in srgb, var(--cw-water-blue) 44%, var(--border-main) 56%);
-    background: rgba(245, 252, 255, 0.97);
+    background: linear-gradient(180deg, rgba(245, 252, 255, 0.98), rgba(231, 246, 255, 0.95));
 }
 
 .stat-label {
@@ -297,8 +318,8 @@ body {
     justify-content: center;
     width: 100%;
     border: 1px solid color-mix(in srgb, var(--border-main) 85%, #dceaf2 15%);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.72);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.8);
     padding: 8px;
 }
 
@@ -328,7 +349,8 @@ body {
     letter-spacing: 0.07em;
     text-transform: uppercase;
     cursor: pointer;
-    transition: background-color 0.18s ease, border-color 0.18s ease;
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease, filter 0.18s ease;
+    box-shadow: 0 4px 10px rgba(10, 74, 122, 0.08);
 }
 
 .btn:focus-visible {
@@ -340,12 +362,13 @@ body {
     background: #ffc907;
     color: var(--cw-black);
     border-color: #efbc00;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .btn-secondary {
-    background: #1f2b34;
+    background: var(--cw-navy);
     color: var(--cw-white);
-    border-color: #1f2b34;
+    border-color: var(--cw-navy);
 }
 
 .btn:disabled {
@@ -1112,9 +1135,10 @@ body {
 
 .instructions {
     border: none;
-    border-radius: 14px;
-    padding: 12px 14px;
-    background: rgba(255, 255, 255, 0.62);
+    border-radius: 16px;
+    padding: 14px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(248, 252, 255, 0.68));
+    border: 1px solid color-mix(in srgb, var(--border-main) 70%, #d5e8f1 30%);
     opacity: 0.92;
 }
 
@@ -1234,9 +1258,9 @@ body {
 
 .impact-footer {
     border-top: none;
-    padding-top: 8px;
+    padding-top: 10px;
     text-align: center;
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: color-mix(in srgb, var(--text-soft) 70%, #b8c6cf 30%);
@@ -1285,8 +1309,15 @@ body[data-theme="dark"] {
         linear-gradient(180deg, rgba(15, 26, 36, 0.82), rgba(15, 26, 36, 0.88)),
         radial-gradient(circle at 12% 0%, rgba(255, 201, 7, 0.1), transparent 35%),
         radial-gradient(circle at 100% 100%, rgba(47, 111, 149, 0.16), transparent 44%),
+        repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0 2px, rgba(255, 255, 255, 0) 2px 12px),
         url("img/background-photo.png") center / cover no-repeat,
         var(--bg-main);
+}
+
+body[data-theme="dark"] .game-wrapper {
+    box-shadow:
+        0 20px 36px rgba(0, 0, 0, 0.34),
+        0 1px 0 rgba(255, 255, 255, 0.06) inset;
 }
 
 body[data-theme="dark"] .game-title {
@@ -1298,7 +1329,8 @@ body[data-theme="dark"] .mission-statement {
 }
 
 body[data-theme="dark"] .org-brand {
-    background: transparent;
+    border-color: #3c5669;
+    background: rgba(37, 57, 73, 0.72);
 }
 
 body[data-theme="dark"] .org-name {
@@ -1330,13 +1362,13 @@ body[data-theme="dark"] .weather-mode-select option {
 }
 
 body[data-theme="dark"] .stat-card {
-    background: rgba(36, 55, 72, 0.95);
+    background: linear-gradient(180deg, rgba(38, 59, 78, 0.98), rgba(29, 45, 60, 0.95));
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
 }
 
 body[data-theme="dark"] .stat-card:first-child {
     border-color: #4e7188;
-    background: rgba(40, 64, 82, 0.96);
+    background: linear-gradient(180deg, rgba(42, 68, 88, 0.98), rgba(31, 52, 68, 0.96));
 }
 
 body[data-theme="dark"] .stat-value {
@@ -1430,11 +1462,12 @@ body[data-theme="dark"] .header-top-row {
 
 body[data-theme="dark"] .control-panel {
     border-color: #3b5568;
-    background: rgba(24, 38, 51, 0.58);
+    background: rgba(24, 38, 51, 0.68);
 }
 
 body[data-theme="dark"] .instructions {
-    background: rgba(24, 38, 51, 0.48);
+    background: linear-gradient(180deg, rgba(27, 43, 57, 0.7), rgba(20, 34, 46, 0.68));
+    border-color: #3b5568;
 }
 
 body[data-theme="dark"] .charity-callout {
@@ -1483,7 +1516,8 @@ body[data-theme="dark"] .drop.bonus {
     }
 
     .btn:hover {
-        filter: brightness(0.98);
+        filter: brightness(0.99);
+        transform: translateY(-1px);
     }
 
     .weather-mode-select:hover {
@@ -1500,6 +1534,10 @@ body[data-theme="dark"] .drop.bonus {
     .drop.polluted:hover,
     .drop.bonus:hover {
         transform: scale(1.12);
+    }
+
+    .org-brand:hover {
+        border-color: color-mix(in srgb, var(--cw-water-blue) 48%, #cfe4ee 52%);
     }
 
     body[data-theme="dark"] .theme-toggle:hover {
@@ -1610,12 +1648,16 @@ body[data-theme="dark"] .impact-footer {
 
     .scoreboard {
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
+        gap: 7px;
     }
 
     .stat-card {
         padding: 10px 8px;
         border-radius: 10px;
+    }
+
+    .instructions {
+        padding: 12px;
     }
 
     .stat-label {
