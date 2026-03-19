@@ -1351,6 +1351,12 @@ body[data-theme="dark"] .impact-footer {
         gap: 8px;
     }
 
+    .weather-control {
+        grid-column: 1 / -1;
+        width: 100%;
+        justify-content: space-between;
+    }
+
     .btn {
         min-height: 46px;
         padding: 10px 10px;
