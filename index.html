@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drop for Change - A Charity: Water Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,600,65&family=Manrope:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..700,1,0" />
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,6 +18,10 @@
             <div class="header-top-row">
                 <p class="theme-label">Display Mode</p>
                 <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false">Dark Mode</button>
+            </div>
+            <div class="org-brand" aria-label="Organization">
+                <img src="img/cw_logo.png" alt="charity: water logo" class="org-logo">
+                <p class="org-name">charity: water</p>
             </div>
             <h1 class="game-title">Drop for Change</h1>
             <p class="mission-statement">Collect clean water drops and make an impact.</p>
@@ -68,9 +76,9 @@
         <section class="instructions" aria-label="How to play">
             <h3>Your Mission</h3>
             <p class="mission-tip"><strong>Move the bucket</strong> with left/right arrow keys or slide your thumb left and right.</p>
-            <p class="legend-item"><span class="drop-icon clean"></span> <strong>Clean Water</strong> - You collected clean water! (+10)</p>
-            <p class="legend-item"><span class="drop-icon bonus"></span> <strong>Jerry Can Bonus</strong> - Amazing! You helped bring clean water closer. (+50)</p>
-            <p class="legend-item"><span class="drop-icon polluted"></span> <strong>Polluted Drop</strong> - That drop was polluted - try another. (-20)</p>
+            <p class="legend-item"><span class="drop-icon clean material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Clean Water</strong> - You collected clean water! (+10)</p>
+            <p class="legend-item"><span class="drop-icon bonus material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Jerry Can Bonus</strong> - Amazing! You helped bring clean water closer. (+50)</p>
+            <p class="legend-item"><span class="drop-icon polluted material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Polluted Drop</strong> - That drop was polluted - try another. (-20)</p>
             <p class="goal-text">Reach 150 points to help bring clean water closer.</p>
         </section>
 

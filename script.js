@@ -283,8 +283,11 @@ function createDrop() {
 
     // Set drop appearance
     drop.classList.add(dropType);
+    drop.classList.add('material-symbols-rounded');
+    drop.textContent = 'water_drop';
     drop.style.width = size + 'px';
     drop.style.height = size + 'px';
+    drop.style.fontSize = Math.round(size * 0.92) + 'px';
 
     // Random horizontal position
     const containerWidth = elements.gameContainer.offsetWidth;
