@@ -18,6 +18,7 @@ let gameState = {
     bucketX: 0,                 // Horizontal bucket position in px
     bucketSpeed: 9,             // How fast the bucket moves with keyboard
     bucketVelocity: 0,          // Current horizontal velocity for smooth movement
+    bucketSteer: 0,             // Smoothed steering value so turns feel less abrupt
     bucketAcceleration: 1.1,    // Keyboard acceleration applied each frame
     bucketMaxSpeed: 13,         // Velocity cap to keep control predictable
     bucketFriction: 0.9,        // Friction when no input is pressed
@@ -30,6 +31,8 @@ let gameState = {
     stormEndTimeout: null,      // Timeout handle for ending current storm
     lightningTimeout: null,     // Timeout handle to remove lightning flash class
     stormRainInterval: null,    // Interval handle for spawning rain particles
+    bucketCatchGlowTimeout: null, // Timeout for positive catch glow state
+    bucketShakeTimeout: null,   // Timeout for storm shake animation state
     weatherMode: 'dramatic',    // User selected weather profile
     hasBucketPosition: false,   // Whether initial placement has been done
 };
@@ -236,6 +239,7 @@ function resetGame() {
     gameState.score = 0;
     gameState.timeRemaining = 60;
     gameState.bucketVelocity = 0;
+    gameState.bucketSteer = 0;
     gameState.touchTargetX = null;
     gameState.touchIsActive = false;
     gameState.bucketFrozenUntil = 0;
@@ -245,6 +249,13 @@ function resetGame() {
     stopStormSystem();
     clearRainParticles();
     elements.bucket.classList.remove('bucket-frozen');
+    elements.bucket.classList.remove('bucket-catch-glow');
+    elements.bucket.classList.remove('bucket-storm-hit');
+
+    clearTimeout(gameState.bucketCatchGlowTimeout);
+    clearTimeout(gameState.bucketShakeTimeout);
+    gameState.bucketCatchGlowTimeout = null;
+    gameState.bucketShakeTimeout = null;
 
     // Remove all drops from game area
     const allDrops = document.querySelectorAll('.drop');
@@ -427,6 +438,10 @@ function scorePoints(drop, points) {
     
     updateScore();
 
+    if (points > 0) {
+        triggerBucketCatchGlow();
+    }
+
     // Show feedback message based on item type
     let message = '';
     if (drop.classList.contains('clean')) {
@@ -448,6 +463,17 @@ function scorePoints(drop, points) {
     setTimeout(() => drop.remove(), 150); // Remove from DOM
 
     // No early game end: players can keep building impact until time runs out.
+}
+
+function triggerBucketCatchGlow() {
+    elements.bucket.classList.remove('bucket-catch-glow');
+    void elements.bucket.offsetWidth;
+    elements.bucket.classList.add('bucket-catch-glow');
+
+    clearTimeout(gameState.bucketCatchGlowTimeout);
+    gameState.bucketCatchGlowTimeout = setTimeout(() => {
+        elements.bucket.classList.remove('bucket-catch-glow');
+    }, 260);
 }
 
 /**
@@ -588,7 +614,14 @@ function setBucketX(nextX) {
 
 function renderBucketPosition() {
     elements.bucket.style.left = `${gameState.bucketX}px`;
-    elements.bucket.style.transform = 'none';
+
+    const speedRatio = Math.min(1, Math.abs(gameState.bucketVelocity) / gameState.bucketMaxSpeed);
+    const squashX = (1 + speedRatio * 0.06).toFixed(3);
+    const squashY = (1 - speedRatio * 0.06).toFixed(3);
+    const bounceY = (Math.sin(performance.now() * 0.02) * speedRatio * 1.8).toFixed(2);
+
+    // Tiny squash + bounce keeps the bucket feeling responsive during motion.
+    elements.bucket.style.transform = `translateY(${bounceY}px) scaleX(${squashX}) scaleY(${squashY})`;
 }
 
 function updateBucketMovement() {
@@ -618,12 +651,16 @@ function updateBucketMovement() {
     if (inputState.leftPressed) direction -= 1;
     if (inputState.rightPressed) direction += 1;
 
-    if (direction !== 0) {
-        gameState.bucketVelocity += direction * gameState.bucketAcceleration;
+    // Smooth direction changes so movement feels less twitchy.
+    gameState.bucketSteer += (direction - gameState.bucketSteer) * 0.28;
+
+    if (Math.abs(gameState.bucketSteer) > 0.01) {
+        gameState.bucketVelocity += gameState.bucketSteer * gameState.bucketAcceleration;
     }
 
     if (direction === 0 && gameState.touchTargetX === null) {
         gameState.bucketVelocity *= gameState.bucketFriction;
+        gameState.bucketSteer *= 0.84;
     }
 
     const maxSpeed = gameState.bucketMaxSpeed;
@@ -698,12 +735,25 @@ function freezeBucketFor(durationMs) {
     const freezeUntil = performance.now() + durationMs;
     gameState.bucketFrozenUntil = Math.max(gameState.bucketFrozenUntil, freezeUntil);
     gameState.bucketVelocity = 0;
+    gameState.bucketSteer = 0;
     elements.bucket.classList.add('bucket-frozen');
+    triggerBucketStormShake();
 
     clearTimeout(gameState.bucketFreezeTimeout);
     gameState.bucketFreezeTimeout = setTimeout(() => {
         elements.bucket.classList.remove('bucket-frozen');
     }, durationMs);
+}
+
+function triggerBucketStormShake() {
+    elements.bucket.classList.remove('bucket-storm-hit');
+    void elements.bucket.offsetWidth;
+    elements.bucket.classList.add('bucket-storm-hit');
+
+    clearTimeout(gameState.bucketShakeTimeout);
+    gameState.bucketShakeTimeout = setTimeout(() => {
+        elements.bucket.classList.remove('bucket-storm-hit');
+    }, 420);
 }
 
 function startRainParticles() {
@@ -760,6 +810,7 @@ function stopStormSystem() {
     clearTimeout(gameState.stormEndTimeout);
     clearTimeout(gameState.lightningTimeout);
     clearTimeout(gameState.bucketFreezeTimeout);
+    clearTimeout(gameState.bucketShakeTimeout);
     clearInterval(gameState.stormRainInterval);
 
     gameState.stormActive = false;
@@ -767,6 +818,7 @@ function stopStormSystem() {
     gameState.stormEndTimeout = null;
     gameState.lightningTimeout = null;
     gameState.bucketFreezeTimeout = null;
+    gameState.bucketShakeTimeout = null;
     gameState.stormRainInterval = null;
 
     elements.gameContainer.classList.remove('storm-active');
