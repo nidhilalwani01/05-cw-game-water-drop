@@ -12,9 +12,13 @@ let gameState = {
     score: 0,                   // Current score
     timeRemaining: 60,          // Seconds left to play
     targetScore: 150,           // Score needed to win (about 15 clean drops or fewer with bonuses)
+    highScore: 0,               // Best score saved across rounds
     timerInterval: null,        // Store timer so we can stop it
     dropInterval: null,         // Store drop creation so we can stop it
 };
+
+// Load the saved high score once when the script starts.
+gameState.highScore = Number(localStorage.getItem('drop-for-change-high-score')) || 0;
 
 // ==========================================
 // DOM ELEMENT REFERENCES
@@ -33,7 +37,41 @@ const elements = {
     finalScore: document.getElementById('final-score'),
     playAgainBtn: document.getElementById('play-again-btn'),
     confettiCanvas: document.getElementById('confetti-canvas'),
+    themeToggle: document.getElementById('theme-toggle'),
 };
+
+// ==========================================
+// THEME TOGGLE (Visual only, does not affect game logic)
+// ==========================================
+
+function applyTheme(theme) {
+    const selectedTheme = theme === 'dark' ? 'dark' : 'light';
+    document.body.setAttribute('data-theme', selectedTheme);
+
+    if (elements.themeToggle) {
+        const isDark = selectedTheme === 'dark';
+        elements.themeToggle.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+        elements.themeToggle.setAttribute('aria-pressed', String(isDark));
+        elements.themeToggle.setAttribute(
+            'aria-label',
+            isDark ? 'Switch to light mode' : 'Switch to dark mode'
+        );
+    }
+}
+
+function initializeThemeToggle() {
+    const savedTheme = localStorage.getItem('drop-for-change-theme');
+    applyTheme(savedTheme || 'light');
+
+    if (elements.themeToggle) {
+        elements.themeToggle.addEventListener('click', () => {
+            const currentTheme = document.body.getAttribute('data-theme');
+            const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(nextTheme);
+            localStorage.setItem('drop-for-change-theme', nextTheme);
+        });
+    }
+}
 
 // ==========================================
 // EVENT LISTENERS - Attach buttons to game functions
@@ -42,6 +80,7 @@ const elements = {
 elements.startBtn.addEventListener('click', startGame);
 elements.resetBtn.addEventListener('click', resetGame);
 elements.playAgainBtn.addEventListener('click', resetGame);
+initializeThemeToggle();
 
 // ==========================================
 // MAIN GAME FUNCTIONS
@@ -142,18 +181,37 @@ function endGame() {
     // Display results
     elements.finalScore.textContent = gameState.score;
 
-    // Check if player won
-    if (gameState.score >= gameState.targetScore) {
-        elements.gameOverTitle.textContent = '🎉 YOU DID IT! 🎉';
+    // Calculate impact from total score.
+    const familiesHelped = Math.floor(gameState.score / gameState.targetScore);
+    const pointsToNextFamily = gameState.targetScore - (gameState.score % gameState.targetScore);
+    const isNewHighScore = gameState.score > gameState.highScore;
+
+    if (isNewHighScore) {
+        gameState.highScore = gameState.score;
+        localStorage.setItem('drop-for-change-high-score', String(gameState.highScore));
+    }
+
+    // End-of-round summary is based on total impact after the full timer.
+    if (familiesHelped > 0) {
+        const familyLabel = familiesHelped === 1 ? 'family' : 'families';
+        const highScoreMessage = isNewHighScore
+            ? ` New high score: ${gameState.highScore}!`
+            : ` High score to beat: ${gameState.highScore}.`;
+
+        elements.gameOverTitle.textContent = "Time's Up - Amazing Impact!";
         elements.gameOverTitle.style.color = '#FFC907';
-        elements.resultMessage.textContent = 
-            `You brought clean water to 1 family. Every drop counts! 💧`;
+        elements.resultMessage.textContent =
+            `You brought clean water to ${familiesHelped} ${familyLabel}.${highScoreMessage}`;
         playConfetti();
     } else {
-        elements.gameOverTitle.textContent = 'Game Over';
+        const targetHint = pointsToNextFamily === gameState.targetScore
+            ? gameState.targetScore
+            : pointsToNextFamily;
+
+        elements.gameOverTitle.textContent = 'Keep Going';
         elements.gameOverTitle.style.color = '#FF902A';
-        elements.resultMessage.textContent = 
-            `Almost there! Keep collecting to bring water to more families. You need ${gameState.targetScore} points.`;
+        elements.resultMessage.textContent =
+            `You are ${targetHint} points away from helping your first family. High score: ${gameState.highScore}.`;
     }
 
     // Show the modal
@@ -270,10 +328,7 @@ function scorePoints(drop, points) {
     drop.style.transform = 'scale(0.5)'; // Shrink
     setTimeout(() => drop.remove(), 150); // Remove from DOM
 
-    // CHECK FOR EARLY WIN (reach target before time runs out)
-    if (gameState.isRunning && gameState.score >= gameState.targetScore) {
-        endGame();
-    }
+    // No early game end: players can keep building impact until time runs out.
 }
 
 /**
