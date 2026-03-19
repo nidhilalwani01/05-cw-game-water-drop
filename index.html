@@ -3,23 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Water Drop Game</title>
+    <title>Drop for Change - A Charity: Water Game</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Main game wrapper container -->
     <div class="game-wrapper">
-        <h1 class="game-title">Water Drop</h1>
-        <p class="game-tagline">Catch the good drops, avoid the bad ones!</p>
-        <div class="score-panel">
-            <div class="score">Score: <span id="score">0</span></div>
-            <div class="timer">Time: <span id="time">30</span>s</div>
-            <button id="start-btn">Start Game</button>
+        <!-- Header section with title and branding -->
+        <div class="header-section">
+            <h1 class="game-title">Drop for Change</h1>
+            <p class="game-tagline">Every drop creates change</p>
+            <p class="mission-statement">Help bring clean water to 1 billion people</p>
         </div>
-        
-        <div id="game-container">
+
+        <!-- Control panel with score, timer, and buttons -->
+        <div class="control-panel">
+            <!-- Score display -->
+            <div class="stat-box">
+                <label>Score</label>
+                <div id="score" class="stat-value">0</div>
+            </div>
+
+            <!-- Timer display -->
+            <div class="stat-box">
+                <label>Time</label>
+                <div id="timer" class="stat-value"><span id="time">60</span>s</div>
+            </div>
+
+            <!-- Game buttons -->
+            <div class="button-group">
+                <button id="start-btn" class="btn btn-primary">Start Game</button>
+                <button id="reset-btn" class="btn btn-secondary">Reset</button>
+            </div>
+        </div>
+
+        <!-- Main game area where drops fall -->
+        <div id="game-container"></div>
+
+        <!-- Game over/win message (hidden until game ends) -->
+        <div id="game-over-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2 id="game-over-title">Game Over!</h2>
+                <p id="game-over-message">Your final score is <span id="final-score">0</span></p>
+                <p class="result-message" id="result-message"></p>
+                <button id="play-again-btn" class="btn btn-primary">Play Again</button>
+            </div>
+        </div>
+
+        <!-- Confetti canvas for celebration animation -->
+        <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+
+        <!-- Game instructions -->
+        <div class="instructions">
+            <h3>Your Mission</h3>
+            <p><span class="drop-icon clean"></span> <strong>Clean Water</strong> — Collect for hope (+10)</p>
+            <p><span class="drop-icon bonus"></span> <strong>Water Cans</strong> — Extra valuable (+50)</p>
+            <p><span class="drop-icon polluted"></span> <strong>Pollution</strong> — Avoid these (-20)</p>
+            <p class="goal-text">🎯 Reach 150 points to secure water access!</p>
+        </div>
+
+        <!-- Impact footer -->
+        <div class="impact-footer">
+            💧 Clean water access is everyone's right 💧
         </div>
     </div>
-    
+
     <script src="script.js"></script>
 </body>
 </html>

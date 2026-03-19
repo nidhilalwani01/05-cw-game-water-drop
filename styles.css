@@ -1,22 +1,7 @@
-/* Charity: water Brand Colors & Fonts
-
-Primary Colors:
-- Yellow:     #FFC907
-- Blue:       #2E9DF7
-
-Secondary Colors:
-- Light Blue: #8BD1CB
-- Green:      #4FCB53
-- Orange:     #FF902A
-- Red:        #F5402C
-- Dark Green: #159A48
-- Pink:       #F16061
-
-Fonts:
-- Proxima Nova
-- Avenir
-
-*/
+/* ==========================================
+   DROP FOR CHANGE - CHARITY: WATER GAME
+   Color Scheme: Yellow (#FFC907), Blue (#2E9DF7), White, Black
+   ========================================== */
 
 * {
     margin: 0;
@@ -29,117 +14,580 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: #f0f0f0;
-    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #2E9DF7 0%, #8BD1CB 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 20px;
 }
+
+/* ==========================================
+   MAIN LAYOUT & WRAPPER
+   ========================================== */
 
 .game-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 25px;
+    background-color: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    max-width: 900px;
+    width: 100%;
 }
 
-.score-panel {
-    display: flex;
-    justify-content: space-between;  /* Space between score and button */
-    align-items: center;
-    width: 800px;
-    padding: 10px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+/* ==========================================
+   HEADER SECTION
+   ========================================== */
 
-.timer {
-    flex: 0 1 auto;
-    font-size: 24px;
-    font-weight: bold;
-}
-
-#game-container {
-    width: 800px;
-    height: 600px;
-    background-color: #e6f7ff;
-    border: 2px solid #333;
-    border-radius: 8px;
-    position: relative;
-    overflow: hidden;
-}
-
-
-#start-btn {
-    padding: 8px 16px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-}
-
-#start-btn:hover {
-    background-color: #45a049;
-}
-
-.score {
-    flex: 0 1 auto;  /* Don't grow, can shrink, auto basis */
-    font-size: 24px;
-    font-weight: bold;
-}
-
-.water-drop {
-    position: absolute;
-    width: 60px;  /* increased from 40px */
-    height: 60px; /* increased from 40px */
-    background-color: #0099ff;
-    border-radius: 50%;
-    animation: dropFall linear forwards;
-    transform-origin: center;
-    cursor: pointer;
-    padding: 15px;  /* Add padding for larger click area */
-    margin: -15px;  /* Offset padding to maintain visual size */
-    transition: transform 0.1s ease;  /* Smooth hover effect */
-}
-
-.water-drop:hover {
-    transform: scale(1.1);  /* Slight grow effect on hover */
-}
-
-.bad-drop {
-    background-color: #ff4444;
+.header-section {
+    text-align: center;
+    margin-bottom: 10px;
 }
 
 .game-title {
-    color: #131313;
+    color: #2E9DF7;
     font-size: 48px;
-    margin-top: 0;
-    margin-bottom: 5px;  /* reduced from 20px */
-    text-align: center;
+    font-weight: bold;
+    margin-bottom: 10px;
 }
 
 .game-tagline {
     color: #666;
     font-size: 18px;
-    margin-bottom: 20px;
-    text-align: center;
+    margin-bottom: 0;
 }
+
+.mission-statement {
+    font-size: 13px;
+    color: #8BD1CB;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 10px;
+    font-weight: 600;
+}
+
+/* ==========================================
+   CONTROL PANEL (Score, Timer, Buttons)
+   ========================================== */
+
+.control-panel {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    border: 2px solid #FFC907;
+    flex-wrap: wrap;
+}
+
+.stat-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.stat-box label {
+    font-size: 14px;
+    color: #666;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.stat-value {
+    font-size: 36px;
+    font-weight: bold;
+    color: #2E9DF7;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* ==========================================
+   BUTTONS
+   ========================================== */
+
+.btn {
+    padding: 14px 28px;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
+    min-height: 44px;  /* Accessibility: minimum touch target size */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-primary {
+    background-color: #FFC907;
+    color: #000;
+}
+
+.btn-primary:hover {
+    background-color: #FFD11A;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 201, 7, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background-color: #2E9DF7;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #1E7FD7;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(46, 157, 247, 0.4);
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ==========================================
+   GAME CONTAINER
+   ========================================== */
+
+#game-container {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    min-height: 350px;
+    max-height: 600px;
+    background: linear-gradient(to bottom, #e6f7ff 0%, #b3e5fc 100%);
+    border: 3px solid #2E9DF7;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ==========================================
+   FALLING DROPS (Clean, Polluted, Bonus)
+   ========================================== */
+
+.drop {
+    position: absolute;
+    border-radius: 50%;
+    cursor: pointer;
+    animation: dropFall linear forwards;
+    transition: transform 0.1s ease;
+}
+
+/* Clean water drops (blue) */
+.drop.clean {
+    background: linear-gradient(135deg, #2E9DF7 0%, #1E7FD7 100%);
+    box-shadow: 0 4px 8px rgba(46, 157, 247, 0.4);
+}
+
+.drop.clean:hover {
+    transform: scale(1.15);
+    box-shadow: 0 6px 12px rgba(46, 157, 247, 0.6);
+}
+
+/* Polluted drops (red/orange) */
+.drop.polluted {
+    background: linear-gradient(135deg, #FF902A 0%, #F5402C 100%);
+    box-shadow: 0 4px 8px rgba(245, 64, 44, 0.4);
+}
+
+.drop.polluted:hover {
+    transform: scale(1.15);
+    box-shadow: 0 6px 12px rgba(245, 64, 44, 0.6);
+}
+
+/* Bonus jerry cans (yellow) */
+.drop.bonus {
+    background: linear-gradient(135deg, #FFC907 0%, #FFB700 100%);
+    border: 3px solid #FFA500;
+    box-shadow: 0 4px 8px rgba(255, 201, 7, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+.drop.bonus:hover {
+    transform: scale(1.15);
+    box-shadow: 0 6px 12px rgba(255, 201, 7, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+/* Bonus drop pulse effect */
+@keyframes dropPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.drop.bonus {
+    animation: dropFall linear forwards, dropPulse 1s ease-in-out infinite;
+}
+
+/* ==========================================
+   DROP FALL ANIMATION
+   ========================================== */
 
 @keyframes dropFall {
     from {
-        transform: translateY(-20px);
+        transform: translateY(-50px);
+        opacity: 1;
     }
     to {
-        transform: translateY(600px);
+        transform: translateY(100vh);
+        opacity: 0.5;
     }
 }
 
-@media (max-width: 850px) {
-    .game-wrapper, .score-panel, #game-container {
-        width: 95vw;
+/* ==========================================
+   CONFETTI ANIMATION
+   ========================================== */
+
+.confetti-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+}
+
+/* ==========================================
+   MODAL (Game Over / Win Message)
+   ========================================== */
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 40px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    animation: slideUp 0.3s ease;
+}
+
+#game-over-title {
+    color: #2E9DF7;
+    font-size: 36px;
+    margin-bottom: 20px;
+}
+
+#game-over-message {
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.result-message {
+    font-size: 18px;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
     }
-    
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ==========================================
+   INSTRUCTIONS
+   ========================================== */
+
+.instructions {
+    width: 100%;
+    padding: 20px;
+    background-color: #f0f8ff;
+    border-radius: 12px;
+    border-left: 4px solid #FFC907;
+}
+
+.instructions h3 {
+    color: #2E9DF7;
+    font-size: 16px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 0;
+}
+
+.instructions p {
+    font-size: 14px;
+    color: #333;
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.goal-text {
+    background: linear-gradient(to right, #FFC907, #8BD1CB);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: bold;
+    margin-top: 12px !important;
+    font-size: 15px;
+}
+
+.drop-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+
+.drop-icon.clean {
+    background: linear-gradient(135deg, #2E9DF7 0%, #1E7FD7 100%);
+}
+
+.drop-icon.polluted {
+    background: linear-gradient(135deg, #FF902A 0%, #F5402C 100%);
+}
+
+.drop-icon.bonus {
+    background: linear-gradient(135deg, #FFC907 0%, #FFB700 100%);
+}
+
+.impact-footer {
+    font-size: 12px;
+    color: #8BD1CB;
+    text-align: center;
+    padding-top: 15px;
+    border-top: 1px solid #e8e8e8;
+    margin-top: 15px;
+    font-weight: 500;
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN (Mobile)
+   ========================================== */
+
+@media (max-width: 768px) {
+    .game-wrapper {
+        padding: 20px;
+        gap: 15px;
+    }
+
+    .game-title {
+        font-size: 36px;
+        margin-bottom: 5px;
+    }
+
+    .game-tagline {
+        font-size: 16px;
+    }
+
+    .mission-statement {
+        font-size: 12px;
+        margin-top: 8px;
+    }
+
+    .control-panel {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .stat-box {
+        width: 100%;
+    }
+
+    .stat-value {
+        font-size: 32px;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        font-size: 14px;
+        min-height: 44px;
+    }
+
+    .button-group {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .instructions {
+        font-size: 13px;
+    }
+
+    .instructions p {
+        margin: 8px 0;
+        font-size: 13px;
+    }
+
     #game-container {
-        height: 70vh;
+        aspect-ratio: 16 / 10;
+        min-height: 280px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    .game-wrapper {
+        padding: 15px;
+        gap: 12px;
+    }
+
+    .game-title {
+        font-size: 28px;
+        margin-bottom: 5px;
+    }
+
+    .game-tagline {
+        font-size: 14px;
+    }
+
+    .mission-statement {
+        font-size: 11px;
+        margin-top: 6px;
+    }
+
+    .control-panel {
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    .stat-box {
+        width: 100%;
+    }
+
+    .stat-box label {
+        font-size: 12px;
+    }
+
+    .stat-value {
+        font-size: 28px;
+    }
+
+    .btn {
+        padding: 12px 20px;
+        font-size: 13px;
+        min-height: 44px;
+        width: 100%;
+    }
+
+    .button-group {
+        width: 100%;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .instructions {
+        padding: 15px;
+        border-radius: 10px;
+    }
+
+    .instructions p {
+        font-size: 12px;
+        margin: 6px 0;
+        gap: 8px;
+    }
+
+    .instructions h3 {
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+    .goal-text {
+        font-size: 13px;
+        margin-top: 10px !important;
+    }
+
+    .impact-footer {
+        font-size: 11px;
+        padding-top: 12px;
+        margin-top: 12px;
+    }
+
+    .drop-icon {
+        width: 16px;
+        height: 16px;
+    }
+
+    #game-container {
+        aspect-ratio: 16 / 9;
+        min-height: 240px;
+    }
+
+    .modal-content {
+        padding: 20px;
+        border-radius: 12px;
+        max-width: 90vw;
+    }
+
+    #game-over-title {
+        font-size: 24px;
+        margin-bottom: 15px;
+    }
+
+    #game-over-message {
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+
+    .result-message {
+        font-size: 14px;
+        margin-bottom: 20px;
     }
 }
