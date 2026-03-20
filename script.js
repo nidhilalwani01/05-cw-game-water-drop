@@ -35,6 +35,9 @@ let gameState = {
     bucketCatchGlowTimeout: null, // Timeout for positive catch glow state
     bucketShakeTimeout: null,   // Timeout for storm shake animation state
     gameMomentTimeout: null,    // Timeout for short visual moment classes on the game container
+    scorePulseTimeout: null,    // Timeout for score pulse class cleanup
+    timerPulseTimeout: null,    // Timeout for timer pulse class cleanup
+    goalPulseTimeout: null,     // Timeout for goal pulse class cleanup
     weatherMode: 'dramatic',    // User selected weather profile
     hasBucketPosition: false,   // Whether initial placement has been done
 };
@@ -65,6 +68,9 @@ const elements = {
     rainLayer: document.getElementById('rain-layer'),
     lightningFlash: document.getElementById('lightning-flash'),
     lightningBolt: document.getElementById('lightning-bolt'),
+    scoreCard: document.querySelector('.scoreboard .stat-card:nth-child(1)'),
+    timerCard: document.querySelector('.scoreboard .stat-card:nth-child(2)'),
+    goalCard: document.querySelector('.scoreboard .stat-card:nth-child(3)'),
 };
 
 const weatherPresets = {
@@ -254,6 +260,7 @@ function resetGame() {
     stopStormSystem();
     clearRainParticles();
     elements.bucket.classList.remove('bucket-frozen');
+    elements.bucket.classList.remove('bucket-shock');
     elements.bucket.classList.remove('bucket-catch-glow');
     elements.bucket.classList.remove('bucket-storm-hit');
     elements.bucket.classList.remove('bucket-catch-bounce');
@@ -261,13 +268,26 @@ function resetGame() {
     clearTimeout(gameState.bucketCatchGlowTimeout);
     clearTimeout(gameState.bucketShakeTimeout);
     clearTimeout(gameState.gameMomentTimeout);
+    clearTimeout(gameState.scorePulseTimeout);
+    clearTimeout(gameState.timerPulseTimeout);
+    clearTimeout(gameState.goalPulseTimeout);
     gameState.bucketCatchGlowTimeout = null;
     gameState.bucketShakeTimeout = null;
     gameState.gameMomentTimeout = null;
+    gameState.scorePulseTimeout = null;
+    gameState.timerPulseTimeout = null;
+    gameState.goalPulseTimeout = null;
 
     elements.gameContainer.classList.remove('bonus-moment');
     elements.gameContainer.classList.remove('storm-moment');
+    elements.gameContainer.classList.remove('negative-flash');
+    elements.gameContainer.classList.remove('lightning-warning-dim');
     elements.bucket.classList.remove('bucket-bonus-boost');
+    elements.scoreDisplay.classList.remove('score-pop');
+    elements.timerDisplay.classList.remove('timer-low-pulse');
+    elements.scoreCard?.classList.remove('stat-pop');
+    elements.timerCard?.classList.remove('stat-pop');
+    elements.goalCard?.classList.remove('stat-pop');
 
     // Remove all drops from game area
     const allDrops = document.querySelectorAll('.drop');
@@ -414,7 +434,9 @@ function createDrop() {
 
     // Vary fall speed for visual interest (2-4 seconds)
     const fallSpeed = 2 + Math.random() * 2;
-    drop.style.animationDuration = fallSpeed + 's';
+    drop.style.setProperty('--fall-duration', `${fallSpeed}s`);
+    drop.style.setProperty('--drop-tilt', `${(Math.random() * 16 - 8).toFixed(2)}deg`);
+    drop.style.setProperty('--drop-sway', `${(Math.random() * 8 + 5).toFixed(2)}px`);
 
     // Add the drop to the game area
     elements.gameContainer.appendChild(drop);
@@ -462,6 +484,10 @@ function scorePoints(drop, points) {
         triggerBucketCatchGlow(dropType);
     }
 
+    if (dropType === 'polluted') {
+        triggerNegativeFlash();
+    }
+
     // Show feedback message based on item type
     let message = '';
     if (drop.classList.contains('clean')) {
@@ -485,6 +511,7 @@ function scorePoints(drop, points) {
     showFeedbackMessage(message, dropType, 1700);
     showPointsFeedback(drop, points, dropType);
     triggerCatchBurst(drop, dropType);
+    triggerCatchParticles(drop, dropType);
 
     // Remove the clicked drop
     drop.style.animation = 'none'; // Stop falling animation
@@ -527,6 +554,39 @@ function triggerCatchBurst(drop, type) {
     setTimeout(() => burst.remove(), 420);
 }
 
+function triggerCatchParticles(drop, type) {
+    const containerRect = elements.gameContainer.getBoundingClientRect();
+    const dropRect = drop.getBoundingClientRect();
+    const originX = dropRect.left - containerRect.left + (dropRect.width / 2);
+    const originY = dropRect.top - containerRect.top + (dropRect.height / 2);
+    const particleCount = type === 'bonus' ? 12 : (type === 'polluted' ? 7 : 9);
+
+    // Small radial particles reinforce catch impact while staying visually clean.
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('span');
+        particle.className = `catch-particle catch-particle-${type}`;
+
+        const angle = (Math.PI * 2 * i) / particleCount + (Math.random() * 0.35);
+        const distance = type === 'bonus'
+            ? 34 + Math.random() * 18
+            : (type === 'polluted' ? 24 + Math.random() * 12 : 28 + Math.random() * 14);
+
+        particle.style.left = `${originX}px`;
+        particle.style.top = `${originY}px`;
+        particle.style.setProperty('--particle-x', `${Math.cos(angle) * distance}px`);
+        particle.style.setProperty('--particle-y', `${Math.sin(angle) * distance}px`);
+
+        elements.gameContainer.appendChild(particle);
+        setTimeout(() => particle.remove(), 520);
+    }
+}
+
+function triggerNegativeFlash() {
+    elements.gameContainer.classList.remove('negative-flash');
+    void elements.gameContainer.offsetWidth;
+    elements.gameContainer.classList.add('negative-flash');
+}
+
 function triggerGameMoment(type, durationMs = 360) {
     const className = type === 'storm' ? 'storm-moment' : 'bonus-moment';
 
@@ -560,12 +620,16 @@ function showPointsFeedback(drop, points, type = 'clean') {
     feedback.style.fontSize = type === 'bonus' ? '28px' : '24px';
     feedback.style.fontWeight = 'bold';
     feedback.style.pointerEvents = 'none';
-    feedback.style.animation = type === 'bonus' ? 'popUpBonus 1s ease-out forwards' : 'popUp 1s ease-out forwards';
+    feedback.style.animation = type === 'bonus'
+        ? 'popUpBonus 1s ease-out forwards'
+        : (type === 'polluted' ? 'popUpNegative 1s ease-out forwards' : 'popUp 1s ease-out forwards');
     feedback.textContent = (points > 0 ? '+' : '') + points;
-    feedback.style.color = type === 'bonus' ? '#FFC907' : (points > 0 ? '#2E9DF7' : '#FF902A');
+    feedback.style.color = type === 'bonus' ? '#FFC907' : (type === 'polluted' ? '#9A907E' : '#2E9DF7');
     feedback.style.textShadow = type === 'bonus'
         ? '0 0 14px rgba(255, 201, 7, 0.85), 2px 2px 4px rgba(0,0,0,0.3)'
-        : '2px 2px 4px rgba(0,0,0,0.3)';
+        : (type === 'polluted'
+            ? '0 0 8px rgba(127, 117, 100, 0.45), 2px 2px 4px rgba(0,0,0,0.25)'
+            : '2px 2px 4px rgba(0,0,0,0.3)');
 
     elements.gameContainer.appendChild(feedback);
 
@@ -595,6 +659,20 @@ function showPointsFeedback(drop, points, type = 'clean') {
                 }
                 100% {
                     transform: translateY(-92px) scale(0.55);
+                    opacity: 0;
+                }
+            }
+            @keyframes popUpNegative {
+                0% {
+                    transform: translateY(0) scale(1);
+                    opacity: 1;
+                }
+                40% {
+                    transform: translateY(-24px) scale(1.02);
+                    opacity: 1;
+                }
+                100% {
+                    transform: translateY(-72px) scale(0.6);
                     opacity: 0;
                 }
             }
@@ -708,7 +786,9 @@ function renderBucketPosition() {
     const speedRatio = Math.min(1, Math.abs(gameState.bucketVelocity) / gameState.bucketMaxSpeed);
     const squashX = (1 + speedRatio * 0.06).toFixed(3);
     const squashY = (1 - speedRatio * 0.06).toFixed(3);
-    const bounceY = (Math.sin(performance.now() * 0.02) * speedRatio * 1.8).toFixed(2);
+    const idleBob = Math.sin(performance.now() * 0.004) * 1.2;
+    const movementBob = Math.sin(performance.now() * 0.02) * speedRatio * 1.8;
+    const bounceY = (idleBob + movementBob).toFixed(2);
 
     // Tiny squash + bounce keeps the bucket feeling responsive during motion.
     elements.bucket.style.transform = `translateY(${bounceY}px) scaleX(${squashX}) scaleY(${squashY})`;
@@ -811,17 +891,21 @@ function triggerLightningStrike() {
     clearTimeout(gameState.lightningWarningTimeout);
     elements.gameContainer.classList.remove('lightning-active');
     elements.gameContainer.classList.remove('lightning-warning');
+    elements.gameContainer.classList.remove('lightning-warning-dim');
 
     void elements.gameContainer.offsetWidth;
     elements.gameContainer.classList.add('lightning-warning');
+    elements.gameContainer.classList.add('lightning-warning-dim');
 
     gameState.lightningWarningTimeout = setTimeout(() => {
         if (!gameState.isRunning || !gameState.stormActive) {
             elements.gameContainer.classList.remove('lightning-warning');
+            elements.gameContainer.classList.remove('lightning-warning-dim');
             return;
         }
 
         elements.gameContainer.classList.remove('lightning-warning');
+        elements.gameContainer.classList.remove('lightning-warning-dim');
         void elements.gameContainer.offsetWidth;
         elements.gameContainer.classList.add('lightning-active');
         triggerGameMoment('storm', 320);
@@ -844,11 +928,13 @@ function freezeBucketFor(durationMs) {
     gameState.bucketVelocity = 0;
     gameState.bucketSteer = 0;
     elements.bucket.classList.add('bucket-frozen');
+    elements.bucket.classList.add('bucket-shock');
     triggerBucketStormShake();
 
     clearTimeout(gameState.bucketFreezeTimeout);
     gameState.bucketFreezeTimeout = setTimeout(() => {
         elements.bucket.classList.remove('bucket-frozen');
+        elements.bucket.classList.remove('bucket-shock');
     }, durationMs);
 }
 
@@ -906,6 +992,7 @@ function endStorm() {
     elements.gameContainer.classList.remove('storm-active');
     elements.gameContainer.classList.remove('lightning-warning');
     elements.gameContainer.classList.remove('lightning-active');
+    elements.gameContainer.classList.remove('lightning-warning-dim');
     elements.gameContainer.classList.remove('bonus-moment');
     elements.gameContainer.classList.remove('storm-moment');
 
@@ -939,6 +1026,7 @@ function stopStormSystem() {
     elements.gameContainer.classList.remove('storm-active');
     elements.gameContainer.classList.remove('lightning-warning');
     elements.gameContainer.classList.remove('lightning-active');
+    elements.gameContainer.classList.remove('lightning-warning-dim');
     elements.gameContainer.classList.remove('bonus-moment');
     elements.gameContainer.classList.remove('storm-moment');
 }
@@ -1063,7 +1151,36 @@ function showFeedbackMessage(message, type = 'clean', durationMs = 2000) {
  * Updates the score display
  */
 function updateScore() {
+    const previousScore = Number(elements.scoreDisplay.dataset.lastScore || 0);
     elements.scoreDisplay.textContent = gameState.score;
+    elements.scoreDisplay.dataset.lastScore = String(gameState.score);
+
+    if (gameState.score !== previousScore) {
+        elements.scoreDisplay.classList.remove('score-pop');
+        void elements.scoreDisplay.offsetWidth;
+        elements.scoreDisplay.classList.add('score-pop');
+
+        elements.scoreCard?.classList.remove('stat-pop');
+        void elements.scoreCard?.offsetWidth;
+        elements.scoreCard?.classList.add('stat-pop');
+
+        clearTimeout(gameState.scorePulseTimeout);
+        gameState.scorePulseTimeout = setTimeout(() => {
+            elements.scoreDisplay.classList.remove('score-pop');
+            elements.scoreCard?.classList.remove('stat-pop');
+        }, 320);
+
+        if (gameState.score > previousScore && gameState.score > 0 && gameState.score % 50 === 0) {
+            elements.goalCard?.classList.remove('stat-pop');
+            void elements.goalCard?.offsetWidth;
+            elements.goalCard?.classList.add('stat-pop');
+
+            clearTimeout(gameState.goalPulseTimeout);
+            gameState.goalPulseTimeout = setTimeout(() => {
+                elements.goalCard?.classList.remove('stat-pop');
+            }, 430);
+        }
+    }
 }
 
 /**
@@ -1075,8 +1192,17 @@ function updateTimer() {
     // Change color if time is running out (red warning)
     if (gameState.timeRemaining <= 10) {
         elements.timerDisplay.style.color = '#FF4444';
+        elements.timerDisplay.classList.add('timer-low-pulse');
+        elements.timerCard?.classList.add('stat-pop');
+
+        clearTimeout(gameState.timerPulseTimeout);
+        gameState.timerPulseTimeout = setTimeout(() => {
+            elements.timerCard?.classList.remove('stat-pop');
+        }, 320);
     } else {
         elements.timerDisplay.style.color = '#2E9DF7';
+        elements.timerDisplay.classList.remove('timer-low-pulse');
+        elements.timerCard?.classList.remove('stat-pop');
     }
 }
 

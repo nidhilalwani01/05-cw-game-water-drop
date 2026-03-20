@@ -324,6 +324,18 @@ body::before {
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
+.stat-card.stat-pop {
+    animation: statCardPulse 0.3s ease-out;
+}
+
+.stat-value.score-pop {
+    animation: scorePop 0.28s ease-out;
+}
+
+.stat-value.timer-low-pulse {
+    animation: timerUrgencyPulse 0.72s ease-in-out infinite;
+}
+
 .stat-card:first-child .stat-value {
     font-size: clamp(2.05rem, 4.4vw, 2.9rem);
 }
@@ -439,6 +451,25 @@ body::before {
 #game-container.storm-moment::after {
     background: radial-gradient(circle at 50% 26%, rgba(189, 230, 255, 0.46), rgba(189, 230, 255, 0) 58%);
     animation: stormMomentPulse 0.32s ease-out;
+}
+
+#game-container.negative-flash::after {
+    background: radial-gradient(circle at 50% 70%, rgba(169, 128, 92, 0.34), rgba(169, 128, 92, 0) 62%);
+    animation: negativeMomentPulse 0.28s ease-out;
+}
+
+#game-container.lightning-warning-dim {
+    filter: brightness(0.9) saturate(0.9);
+}
+
+#game-container.lightning-active::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(226, 247, 255, 0.22);
+    z-index: 9;
+    pointer-events: none;
+    animation: lightningScreenFlash 0.2s ease-out;
 }
 
 #game-container.weather-calm {
@@ -825,6 +856,10 @@ body::before {
     filter: drop-shadow(0 0 8px rgba(227, 246, 255, 0.8));
 }
 
+.collector-bucket.bucket-shock {
+    animation: bucketShock 0.24s ease-out 2;
+}
+
 .collector-bucket.bucket-catch-glow {
     filter:
         drop-shadow(0 0 8px rgba(151, 226, 255, 0.9))
@@ -869,12 +904,34 @@ body::before {
     box-shadow: 0 0 14px rgba(255, 201, 7, 0.78);
 }
 
-.collector-bucket::before {
-    content: none;
+.catch-particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 10;
+    animation: catchParticleBurst 0.52s ease-out forwards;
 }
 
-.collector-bucket::after {
-    content: none;
+.catch-particle-clean {
+    background: radial-gradient(circle, rgba(187, 235, 255, 0.95), rgba(46, 157, 247, 0.9));
+    box-shadow: 0 0 10px rgba(46, 157, 247, 0.5);
+}
+
+.catch-particle-bonus {
+    width: 7px;
+    height: 7px;
+    background: radial-gradient(circle, rgba(255, 246, 184, 0.98), rgba(255, 201, 7, 0.9));
+    box-shadow: 0 0 13px rgba(255, 201, 7, 0.72);
+}
+
+.catch-particle-polluted {
+    width: 5px;
+    height: 5px;
+    background: radial-gradient(circle, rgba(210, 188, 162, 0.8), rgba(127, 117, 100, 0.84));
+    box-shadow: 0 0 8px rgba(127, 117, 100, 0.42);
 }
 
 /* ==========================================
@@ -891,7 +948,10 @@ body::before {
     font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 48;
     line-height: 1;
     user-select: none;
-    animation: dropFall linear forwards;
+    --fall-duration: 3s;
+    --drop-tilt: 0deg;
+    --drop-sway: 6px;
+    animation: dropFall var(--fall-duration) linear forwards, dropSway 1.8s ease-in-out infinite;
     transition: transform 0.12s ease;
     z-index: 6;
 }
@@ -902,12 +962,27 @@ body::before {
     text-shadow:
         0 4px 12px rgba(46, 157, 247, 0.54)
         0 0 8px rgba(214, 244, 255, 0.72);
+    filter: drop-shadow(0 0 5px rgba(197, 237, 255, 0.55));
+}
+
+.drop.clean::after {
+    content: '';
+    position: absolute;
+    top: 20%;
+    left: 58%;
+    width: 22%;
+    height: 22%;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.62);
+    filter: blur(1px);
 }
 
 /* Polluted drops in muted gray/brown */
 .drop.polluted {
     color: var(--cw-polluted);
     text-shadow: 0 4px 10px rgba(127, 117, 100, 0.3);
+    filter: saturate(0.85) brightness(0.93);
+    animation-timing-function: cubic-bezier(0.32, 0.1, 0.69, 1), ease-in-out;
 }
 
 /* Jerry can bonus drops */
@@ -916,17 +991,28 @@ body::before {
     text-shadow:
         0 4px 14px rgba(255, 201, 7, 0.62)
         0 0 10px rgba(255, 241, 175, 0.8);
-    animation: dropFall linear forwards, dropPulse 1s ease-in-out infinite;
+    animation: dropFall var(--fall-duration) linear forwards, dropSway 1.8s ease-in-out infinite, dropPulse 1s ease-in-out infinite;
+    filter: drop-shadow(0 0 9px rgba(255, 210, 49, 0.64));
 }
 
 @keyframes dropFall {
     from {
-        transform: translateY(-50px);
+        transform: translateY(-50px) rotate(var(--drop-tilt));
         opacity: 1;
     }
     to {
-        transform: translateY(100vh);
+        transform: translateY(100vh) rotate(calc(var(--drop-tilt) * -0.45));
         opacity: 0.5;
+    }
+}
+
+@keyframes dropSway {
+    0%,
+    100% {
+        margin-left: 0;
+    }
+    50% {
+        margin-left: var(--drop-sway);
     }
 }
 
@@ -1120,6 +1206,21 @@ body::before {
     }
 }
 
+@keyframes bucketShock {
+    0% {
+        transform: translateY(0) translateX(0) scale(1);
+    }
+    30% {
+        transform: translateY(0) translateX(-2px) scale(1.02);
+    }
+    60% {
+        transform: translateY(0) translateX(2px) scale(0.99);
+    }
+    100% {
+        transform: translateY(0) translateX(0) scale(1);
+    }
+}
+
 @keyframes catchBurstExpand {
     0% {
         transform: translate(-50%, -50%) scale(0.4);
@@ -1127,6 +1228,17 @@ body::before {
     }
     100% {
         transform: translate(-50%, -50%) scale(2.3);
+        opacity: 0;
+    }
+}
+
+@keyframes catchParticleBurst {
+    0% {
+        transform: translate(-50%, -50%) scale(0.3);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(calc(-50% + var(--particle-x)), calc(-50% + var(--particle-y))) scale(0.1);
         opacity: 0;
     }
 }
@@ -1152,6 +1264,66 @@ body::before {
     }
     100% {
         opacity: 0;
+    }
+}
+
+@keyframes negativeMomentPulse {
+    0% {
+        opacity: 0;
+    }
+    35% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes lightningScreenFlash {
+    0% {
+        opacity: 0;
+    }
+    35% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes statCardPulse {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+    45% {
+        transform: translateY(-1px) scale(1.02);
+    }
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes scorePop {
+    0% {
+        transform: scale(1);
+    }
+    40% {
+        transform: scale(1.08);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes timerUrgencyPulse {
+    0%,
+    100% {
+        transform: scale(1);
+        text-shadow: 0 0 0 rgba(255, 68, 68, 0);
+    }
+    50% {
+        transform: scale(1.06);
+        text-shadow: 0 0 12px rgba(255, 68, 68, 0.35);
     }
 }
 
@@ -1649,7 +1821,8 @@ body[data-theme="dark"] .drop.bonus {
 
     .btn:hover {
         filter: brightness(0.99);
-        transform: translateY(-1px);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(10, 74, 122, 0.16);
     }
 
     .weather-mode-select:hover {
@@ -1697,7 +1870,7 @@ body[data-theme="dark"] .collector-bucket::before {
 }
 
 body[data-theme="dark"] .collector-bucket::after {
-    content: none;
+    content: '';
 }
 
 body[data-theme="dark"] .stat-label,
@@ -1853,11 +2026,12 @@ body[data-theme="dark"] .impact-footer {
     }
 
     .collector-bucket::before {
-        content: none;
+        width: 52px;
+        bottom: -9px;
     }
 
     .collector-bucket::after {
-        content: none;
+        content: '';
     }
 }
 
