@@ -69,6 +69,19 @@ body {
         repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0 2px, rgba(255, 255, 255, 0) 2px 12px),
         url("img/background-photo.png") center / cover no-repeat,
         var(--bg-main);
+    position: relative;
+    isolation: isolate;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: rgba(242, 233, 216, 0.46);
+    backdrop-filter: blur(10px) saturate(0.86);
+    -webkit-backdrop-filter: blur(10px) saturate(0.86);
+    pointer-events: none;
 }
 
 /* Main card-like layout to keep the game centered and spacious. */
@@ -85,6 +98,7 @@ body {
         0 18px 38px rgba(10, 74, 122, 0.14),
         0 2px 0 rgba(255, 255, 255, 0.7) inset;
     position: relative;
+    z-index: 1;
     overflow: hidden;
 }
 
@@ -112,11 +126,13 @@ body {
 }
 
 .weather-control {
-    display: block;
+    display: flex;
+    min-width: 0;
 }
 
 .weather-mode-select {
     width: 100%;
+    height: 100%;
     border: 1px solid color-mix(in srgb, var(--border-main) 85%, #c3e1ef 15%);
     background: #ffffff;
     color: #1a5d86;
@@ -124,11 +140,14 @@ body {
     min-height: 48px;
     padding: 0 16px;
     font-size: 0.82rem;
+    line-height: 1.2;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     font-weight: 700;
     cursor: pointer;
     box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 .weather-mode-select option {
@@ -329,6 +348,11 @@ body {
     gap: 8px;
     width: 100%;
     align-items: stretch;
+    grid-auto-rows: 1fr;
+}
+
+.button-group > * {
+    min-width: 0;
 }
 
 .control-panel + #game-container {
@@ -389,7 +413,7 @@ body {
     overflow: hidden;
     border-radius: 18px;
     border: 1px dashed #c8dbe5;
-    background: linear-gradient(180deg, #d6edf8 0%, #a8d4e6 100%);
+    background: linear-gradient(180deg, #dff3ff 0%, #bfe0ef 54%, #a7d0de 100%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
     touch-action: none;
     isolation: isolate;
@@ -436,7 +460,7 @@ body {
     inset: 0;
     z-index: 1;
     pointer-events: none;
-    opacity: 0.76;
+    opacity: 0.9;
 }
 
 .sky-layer {
@@ -444,8 +468,8 @@ body {
     inset: 0;
     overflow: hidden;
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.02)),
-        repeating-radial-gradient(circle at 24px 24px, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 34px);
+        radial-gradient(circle at 22% 10%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 42%),
+        linear-gradient(180deg, #e8f7ff 0%, #d2ebf8 44%, #b9ddee 100%);
 }
 
 .cloud,
@@ -468,7 +492,7 @@ body {
         radial-gradient(circle at 80% 40%, rgba(246, 252, 255, 0.88) 0 27%, rgba(246, 252, 255, 0) 70%),
         linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(239, 248, 255, 0.75));
     filter: drop-shadow(0 4px 8px rgba(33, 74, 102, 0.08));
-    animation: driftCloud linear infinite;
+    animation: driftCloud linear infinite, cloudFloat ease-in-out infinite;
 }
 
 .cloud::before,
@@ -499,31 +523,39 @@ body {
 .cloud-1 {
     top: 16%;
     left: -26%;
-    animation-duration: 36s;
+    animation-duration: 34s, 5.2s;
 }
 
 .cloud-2 {
     top: 24%;
     left: -38%;
     --cloud-scale: 1.16;
-    animation-duration: 45s;
-    animation-delay: -8s;
+    animation-duration: 46s, 6.6s;
+    animation-delay: -8s, -1.2s;
 }
 
 .cloud-3 {
     top: 9%;
     left: -34%;
     --cloud-scale: 0.92;
-    animation-duration: 52s;
-    animation-delay: -22s;
+    animation-duration: 54s, 7.4s;
+    animation-delay: -22s, -2s;
 }
 
 .cloud-4 {
     top: 31%;
     left: -42%;
     --cloud-scale: 1.08;
-    animation-duration: 48s;
-    animation-delay: -16s;
+    animation-duration: 49s, 6.2s;
+    animation-delay: -16s, -2.8s;
+}
+
+.cloud-5 {
+    top: 19%;
+    left: -35%;
+    --cloud-scale: 0.78;
+    animation-duration: 60s, 8.1s;
+    animation-delay: -12s, -4.2s;
 }
 
 /* Storm clouds fade in only during active storm windows. */
@@ -539,7 +571,7 @@ body {
         radial-gradient(circle at 84% 40%, rgba(71, 84, 98, 0.86) 0 28%, rgba(71, 84, 98, 0) 74%),
         linear-gradient(180deg, rgba(96, 110, 125, 0.92), rgba(58, 72, 87, 0.82));
     filter: drop-shadow(0 8px 12px rgba(24, 33, 42, 0.3));
-    animation: driftCloud linear infinite;
+    animation: driftCloud linear infinite, cloudFloat ease-in-out infinite;
     transition: opacity 0.35s ease;
     opacity: 0;
 }
@@ -561,21 +593,44 @@ body {
 }
 
 .storm-cloud-1 {
-    animation-duration: 28s;
+    animation-duration: 28s, 4.5s;
 }
 
 .storm-cloud-2 {
     top: 14%;
     --cloud-scale: 1.14;
-    animation-duration: 32s;
-    animation-delay: -7s;
+    animation-duration: 32s, 5.1s;
+    animation-delay: -7s, -1.1s;
 }
 
 .storm-cloud-3 {
     top: 3%;
     --cloud-scale: 0.9;
-    animation-duration: 34s;
-    animation-delay: -14s;
+    animation-duration: 34s, 5.6s;
+    animation-delay: -14s, -2.2s;
+}
+
+.horizon-blend {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 62px;
+    height: 48px;
+    z-index: 4;
+    pointer-events: none;
+    background:
+        linear-gradient(180deg, rgba(181, 220, 234, 0) 0%, rgba(138, 189, 166, 0.34) 72%, rgba(96, 150, 108, 0.5) 100%);
+}
+
+.horizon-blend::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: rgba(30, 79, 49, 0.22);
+    box-shadow: 0 2px 8px rgba(22, 54, 35, 0.18);
 }
 
 .lightning-flash {
@@ -657,73 +712,112 @@ body {
     bottom: 0;
     height: 62px;
     overflow: hidden;
-    background:
-        linear-gradient(180deg, #66bb72 0%, #4c9d5b 44%, #347847 100%);
-    border-top: 2px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 -8px 16px rgba(23, 78, 40, 0.2);
+    z-index: 5;
+    background: transparent;
+    border-top: 1px solid rgba(255, 255, 255, 0.28);
+    box-shadow: 0 -10px 16px rgba(23, 78, 40, 0.14);
 }
 
-.grass-strip::before,
-.grass-strip::after {
+.grass-back,
+.grass-front {
     content: '';
     position: absolute;
-    left: -8%;
-    width: 116%;
+    left: 0;
+    right: 0;
+    bottom: 0;
     pointer-events: none;
 }
 
-.grass-strip::before {
-    top: -12px;
-    height: 30px;
+.grass-back {
+    top: 0;
+    background: linear-gradient(180deg, #4f9e5d 0%, #3d7f4a 56%, #2e6639 100%);
+}
+
+.grass-front {
+    top: -10px;
+    height: 36px;
+    left: -6%;
+    right: -6%;
     background:
         repeating-linear-gradient(
             78deg,
-            rgba(108, 193, 118, 0.95) 0 2px,
-            rgba(108, 193, 118, 0) 2px 8px,
-            rgba(70, 151, 81, 0.85) 8px 10px,
-            rgba(70, 151, 81, 0) 10px 16px
+            rgba(120, 205, 128, 0.95) 0 2px,
+            rgba(120, 205, 128, 0) 2px 8px,
+            rgba(81, 170, 92, 0.88) 8px 10px,
+            rgba(81, 170, 92, 0) 10px 16px
         );
     transform-origin: center bottom;
     animation: grassSwayFront 5.6s ease-in-out infinite;
 }
 
-.grass-strip::after {
-    top: 6px;
-    height: 26px;
-    opacity: 0.7;
+.grass-back::before {
+    content: '';
+    position: absolute;
+    left: -5%;
+    right: -5%;
+    top: -2px;
+    height: 24px;
+    opacity: 0.72;
     background:
         repeating-linear-gradient(
             102deg,
-            rgba(79, 142, 70, 0.8) 0 2px,
-            rgba(79, 142, 70, 0) 2px 9px,
-            rgba(47, 104, 57, 0.7) 9px 11px,
-            rgba(47, 104, 57, 0) 11px 16px
+            rgba(67, 131, 74, 0.82) 0 2px,
+            rgba(67, 131, 74, 0) 2px 9px,
+            rgba(40, 94, 51, 0.7) 9px 11px,
+            rgba(40, 94, 51, 0) 11px 16px
         );
     transform-origin: center bottom;
     animation: grassSwayBack 7.4s ease-in-out infinite;
 }
 
+.grass-front::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 6px;
+    height: 22px;
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    background:
+        linear-gradient(180deg, rgba(70, 130, 77, 0), rgba(34, 83, 46, 0.3));
+}
+
 .collector-bucket {
     position: absolute;
     left: 50%;
-    bottom: 20px;
-    width: 126px;
-    height: 66px;
+    bottom: 40px;
+    width: 88px;
+    height: 88px;
     transform: translateX(-50%);
     display: grid;
     place-items: center;
-    font-size: 68px;
+    font-size: 82px;
     font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 48;
     line-height: 1;
     color: #1c6f9e;
     filter:
-        drop-shadow(0 4px 8px rgba(10, 74, 122, 0.28))
-        drop-shadow(0 0 6px rgba(205, 241, 255, 0.55));
+        drop-shadow(0 6px 10px rgba(10, 74, 122, 0.3))
+        drop-shadow(0 0 6px rgba(205, 241, 255, 0.52));
     z-index: 8;
     pointer-events: none;
     user-select: none;
     transform-origin: center bottom;
     transition: filter 0.16s ease, color 0.16s ease;
+}
+
+.collector-bucket::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -10px;
+    width: 58px;
+    height: 10px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(12, 59, 88, 0.28) 0%, rgba(12, 59, 88, 0) 78%);
+    filter: blur(1.5px);
+    pointer-events: none;
 }
 
 .collector-bucket.bucket-frozen {
@@ -743,6 +837,10 @@ body {
 
 .collector-bucket.bucket-bonus-boost {
     animation: bucketBonusBoost 0.38s ease-out;
+}
+
+.collector-bucket.bucket-catch-bounce {
+    animation: bucketCatchBounce 0.22s cubic-bezier(0.2, 0.75, 0.25, 1);
 }
 
 .catch-burst {
@@ -854,6 +952,16 @@ body {
     }
     100% {
         transform: translateX(150vw) translateY(0) scale(var(--cloud-scale));
+    }
+}
+
+@keyframes cloudFloat {
+    0%,
+    100% {
+        margin-top: 0;
+    }
+    50% {
+        margin-top: -5px;
     }
 }
 
@@ -994,6 +1102,18 @@ body {
     }
     35% {
         transform: translateY(-4px) scale(1.08);
+    }
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes bucketCatchBounce {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+    45% {
+        transform: translateY(-5px) scale(1.05);
     }
     100% {
         transform: translateY(0) scale(1);
@@ -1314,6 +1434,10 @@ body[data-theme="dark"] {
         var(--bg-main);
 }
 
+body[data-theme="dark"]::before {
+    background: rgba(15, 26, 36, 0.54);
+}
+
 body[data-theme="dark"] .game-wrapper {
     box-shadow:
         0 20px 36px rgba(0, 0, 0, 0.34),
@@ -1406,6 +1530,11 @@ body[data-theme="dark"] #game-container {
         linear-gradient(180deg, #2d4d62 0%, #213a4a 100%);
 }
 
+body[data-theme="dark"] .horizon-blend {
+    background:
+        linear-gradient(180deg, rgba(53, 82, 98, 0) 0%, rgba(55, 92, 79, 0.28) 68%, rgba(44, 81, 56, 0.45) 100%);
+}
+
 body[data-theme="dark"] .sky-layer {
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
@@ -1430,22 +1559,14 @@ body[data-theme="dark"] .cloud::after {
 }
 
 body[data-theme="dark"] .grass-strip {
-    background:
-        linear-gradient(180deg, #4c9a57 0%, #377543 44%, #275934 100%);
+    border-top-color: rgba(188, 227, 196, 0.14);
 }
 
-body[data-theme="dark"] .grass-strip::before {
-    background:
-        repeating-linear-gradient(
-            78deg,
-            rgba(81, 154, 90, 0.85) 0 2px,
-            rgba(81, 154, 90, 0) 2px 8px,
-            rgba(56, 118, 65, 0.78) 8px 10px,
-            rgba(56, 118, 65, 0) 10px 16px
-        );
+body[data-theme="dark"] .grass-back {
+    background: linear-gradient(180deg, #3f7f49 0%, #2e6237 56%, #214a2a 100%);
 }
 
-body[data-theme="dark"] .grass-strip::after {
+body[data-theme="dark"] .grass-back::before {
     background:
         repeating-linear-gradient(
             102deg,
@@ -1453,6 +1574,17 @@ body[data-theme="dark"] .grass-strip::after {
             rgba(52, 104, 60, 0) 2px 9px,
             rgba(36, 79, 44, 0.7) 9px 11px,
             rgba(36, 79, 44, 0) 11px 16px
+        );
+}
+
+body[data-theme="dark"] .grass-front {
+    background:
+        repeating-linear-gradient(
+            78deg,
+            rgba(93, 164, 102, 0.86) 0 2px,
+            rgba(93, 164, 102, 0) 2px 8px,
+            rgba(63, 128, 73, 0.78) 8px 10px,
+            rgba(63, 128, 73, 0) 10px 16px
         );
 }
 
@@ -1561,7 +1693,7 @@ body[data-theme="dark"] #game-container.lightning-warning::before {
 }
 
 body[data-theme="dark"] .collector-bucket::before {
-    content: none;
+    background: radial-gradient(circle, rgba(0, 0, 0, 0.38) 0%, rgba(0, 0, 0, 0) 78%);
 }
 
 body[data-theme="dark"] .collector-bucket::after {
@@ -1625,6 +1757,7 @@ body[data-theme="dark"] .impact-footer {
     }
 
     .weather-mode-select {
+        height: 46px;
         min-height: 46px;
         padding: 0 11px;
         font-size: 0.7rem;
@@ -1632,7 +1765,7 @@ body[data-theme="dark"] .impact-footer {
     }
 
     .weather-control {
-        min-height: auto;
+        min-height: 46px;
     }
 
     .theme-toggle {
@@ -1677,9 +1810,11 @@ body[data-theme="dark"] .impact-footer {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
+        grid-auto-rows: 1fr;
     }
 
     .btn {
+        height: 46px;
         min-height: 46px;
         padding: 10px 10px;
         font-size: 0.82rem;
@@ -1702,10 +1837,10 @@ body[data-theme="dark"] .impact-footer {
     }
 
     .collector-bucket {
-        width: 104px;
-        height: 56px;
-        font-size: 58px;
-        bottom: 18px;
+        width: 82px;
+        height: 82px;
+        font-size: 76px;
+        bottom: 34px;
     }
 
     .grass-strip {

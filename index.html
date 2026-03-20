@@ -53,9 +53,9 @@
                 <button id="reset-btn" class="btn btn-secondary">Reset</button>
                 <div class="weather-control">
                     <select id="weather-mode" class="weather-mode-select" aria-label="Choose storm intensity mode">
-                        <option value="calm">Weather: Calm</option>
-                        <option value="dramatic" selected>Weather: Dramatic</option>
-                        <option value="hard">Weather: Hard</option>
+                        <option value="calm">Calm</option>
+                        <option value="dramatic" selected>Dramatic</option>
+                        <option value="hard">Hard</option>
                     </select>
                 </div>
             </div>
@@ -69,6 +69,7 @@
                     <span class="cloud cloud-2"></span>
                     <span class="cloud cloud-3"></span>
                     <span class="cloud cloud-4"></span>
+                        <span class="cloud cloud-5"></span>
 
                     <span class="storm-cloud storm-cloud-1"></span>
                     <span class="storm-cloud storm-cloud-2"></span>
@@ -78,7 +79,11 @@
                 <div id="lightning-flash" class="lightning-flash"></div>
                 <div id="lightning-bolt" class="lightning-bolt material-symbols-rounded">bolt</div>
                 <div id="rain-layer" class="rain-layer"></div>
-                <div class="grass-strip"></div>
+                <div class="horizon-blend"></div>
+                <div class="grass-strip">
+                    <span class="grass-back"></span>
+                    <span class="grass-front"></span>
+                </div>
             </div>
             <div id="collector-bucket" class="collector-bucket material-symbols-rounded" aria-hidden="true">local_drink</div>
         </section>

@@ -256,6 +256,7 @@ function resetGame() {
     elements.bucket.classList.remove('bucket-frozen');
     elements.bucket.classList.remove('bucket-catch-glow');
     elements.bucket.classList.remove('bucket-storm-hit');
+    elements.bucket.classList.remove('bucket-catch-bounce');
 
     clearTimeout(gameState.bucketCatchGlowTimeout);
     clearTimeout(gameState.bucketShakeTimeout);
@@ -497,8 +498,10 @@ function scorePoints(drop, points) {
 function triggerBucketCatchGlow(type = 'clean') {
     elements.bucket.classList.remove('bucket-catch-glow');
     elements.bucket.classList.remove('bucket-bonus-boost');
+    elements.bucket.classList.remove('bucket-catch-bounce');
     void elements.bucket.offsetWidth;
     elements.bucket.classList.add('bucket-catch-glow');
+    elements.bucket.classList.add('bucket-catch-bounce');
 
     if (type === 'bonus') {
         elements.bucket.classList.add('bucket-bonus-boost');
@@ -630,6 +633,10 @@ function initializeBucketControls() {
     });
 
     const moveToTouchX = (clientX) => {
+        if (performance.now() < gameState.bucketFrozenUntil) {
+            return;
+        }
+
         const containerRect = elements.gameContainer.getBoundingClientRect();
         const bucketWidth = elements.bucket.offsetWidth;
         gameState.touchTargetX = clientX - containerRect.left - (bucketWidth / 2);
