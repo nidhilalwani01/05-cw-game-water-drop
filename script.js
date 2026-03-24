@@ -69,6 +69,7 @@ const elements = {
     themeToggle: document.getElementById('theme-toggle'),
     soundToggle: document.getElementById('sound-toggle'),
     weatherModeSelect: document.getElementById('weather-mode'),
+    weatherModeHint: document.getElementById('weather-mode-hint'),
     bucket: document.getElementById('collector-bucket'),
     rainLayer: document.getElementById('rain-layer'),
     lightningFlash: document.getElementById('lightning-flash'),
@@ -80,20 +81,29 @@ const elements = {
 
 const weatherPresets = {
     calm: {
-        stormDelayMin: 10000,
-        stormDelayMax: 14000,
-        stormDurationMs: 2200,
-        lightningWarningMs: 700,
-        lightningFlashMs: 900,
-        freezeMs: 700,
-        rainBurstCount: 8,
-        rainSpawnIntervalMs: 170,
-        rainDurationMin: 0.55,
-        rainDurationMax: 0.9,
-        rainOpacityMin: 0.35,
-        rainOpacityMax: 0.65,
+        label: 'Calm (Easy)',
+        hint: 'Easy pace: slower drops, fewer polluted drops, and gentler storms.',
+        stormDelayMin: 13000,
+        stormDelayMax: 18000,
+        stormDurationMs: 1900,
+        lightningWarningMs: 920,
+        lightningFlashMs: 760,
+        freezeMs: 520,
+        rainBurstCount: 6,
+        rainSpawnIntervalMs: 210,
+        rainDurationMin: 0.62,
+        rainDurationMax: 1,
+        rainOpacityMin: 0.28,
+        rainOpacityMax: 0.58,
+        dropSpawnIntervalMs: 940,
+        dropFallMinSec: 2.8,
+        dropFallMaxSec: 4.4,
+        cleanChance: 0.76,
+        pollutedChance: 0.14,
     },
     dramatic: {
+        label: 'Dramatic (Medium)',
+        hint: 'Balanced challenge: steady pressure and frequent lightning windows.',
         stormDelayMin: 8000,
         stormDelayMax: 12000,
         stormDurationMs: 2800,
@@ -106,20 +116,32 @@ const weatherPresets = {
         rainDurationMax: 0.85,
         rainOpacityMin: 0.45,
         rainOpacityMax: 0.9,
+        dropSpawnIntervalMs: 800,
+        dropFallMinSec: 2,
+        dropFallMaxSec: 3.4,
+        cleanChance: 0.7,
+        pollutedChance: 0.2,
     },
     hard: {
-        stormDelayMin: 8000,
-        stormDelayMax: 12000,
-        stormDurationMs: 2800,
-        lightningWarningMs: 500,
-        lightningFlashMs: 1000,
-        freezeMs: 1100,
-        rainBurstCount: 14,
-        rainSpawnIntervalMs: 130,
-        rainDurationMin: 0.45,
-        rainDurationMax: 0.85,
-        rainOpacityMin: 0.45,
-        rainOpacityMax: 0.9,
+        label: 'Hard (Intense)',
+        hint: 'Intense mode: faster drops, more polluted drops, and harsher storms.',
+        stormDelayMin: 5200,
+        stormDelayMax: 8200,
+        stormDurationMs: 3400,
+        lightningWarningMs: 430,
+        lightningFlashMs: 1120,
+        freezeMs: 1350,
+        rainBurstCount: 18,
+        rainSpawnIntervalMs: 95,
+        rainDurationMin: 0.34,
+        rainDurationMax: 0.62,
+        rainOpacityMin: 0.56,
+        rainOpacityMax: 0.98,
+        dropSpawnIntervalMs: 640,
+        dropFallMinSec: 1.45,
+        dropFallMaxSec: 2.75,
+        cleanChance: 0.6,
+        pollutedChance: 0.3,
     },
 };
 
@@ -310,6 +332,7 @@ function getActiveWeatherPreset() {
 
 function applyWeatherMode(mode) {
     const selectedMode = weatherPresets[mode] ? mode : 'dramatic';
+    const preset = weatherPresets[selectedMode];
     gameState.weatherMode = selectedMode;
 
     elements.gameContainer.classList.remove('weather-calm', 'weather-dramatic', 'weather-hard');
@@ -317,6 +340,16 @@ function applyWeatherMode(mode) {
 
     if (elements.weatherModeSelect) {
         elements.weatherModeSelect.value = selectedMode;
+        elements.weatherModeSelect.setAttribute('title', preset.label);
+        elements.weatherModeSelect.setAttribute('aria-label', `Choose storm intensity mode. Current mode: ${preset.label}`);
+    }
+
+    if (elements.weatherModeHint) {
+        elements.weatherModeHint.textContent = preset.hint;
+    }
+
+    if (gameState.isRunning) {
+        updateDropInterval();
     }
 }
 
@@ -326,11 +359,29 @@ function initializeWeatherModeControl() {
 
     if (elements.weatherModeSelect) {
         elements.weatherModeSelect.addEventListener('change', (event) => {
+            const previousMode = gameState.weatherMode;
             const selectedMode = event.target.value;
             applyWeatherMode(selectedMode);
             localStorage.setItem('drop-for-change-weather-mode', gameState.weatherMode);
+
+            if (gameState.isRunning && previousMode !== gameState.weatherMode) {
+                const activePreset = getActiveWeatherPreset();
+                showFeedbackMessage(`Mode switched: ${activePreset.label}.`, 'storm', 1300);
+            }
         });
     }
+}
+
+function updateDropInterval() {
+    clearInterval(gameState.dropInterval);
+
+    if (!gameState.isRunning) {
+        gameState.dropInterval = null;
+        return;
+    }
+
+    const preset = getActiveWeatherPreset();
+    gameState.dropInterval = setInterval(createDrop, preset.dropSpawnIntervalMs);
 }
 
 // ==========================================
@@ -372,8 +423,8 @@ function startGame() {
     elements.startBtn.disabled = true;
     ensureBucketPosition();
 
-    // Create drops every 800ms (slightly faster for more challenge)
-    gameState.dropInterval = setInterval(createDrop, 800);
+    // Spawn cadence is controlled by the selected weather mode.
+    updateDropInterval();
 
     // Update timer every second
     gameState.timerInterval = setInterval(tick, 1000);
@@ -537,7 +588,7 @@ function endGame() {
 
 /**
  * Creates a new falling drop with random type and position
- * Types: 70% clean (blue), 20% polluted (red), 10% bonus (yellow)
+ * Mix and speed adapt to selected weather mode.
  */
 function createDrop() {
     // Don't create drops if game isn't running
@@ -548,22 +599,26 @@ function createDrop() {
 
     // Randomly decide drop type
     const rand = Math.random();
+    const preset = getActiveWeatherPreset();
+    const cleanChance = Math.max(0, Math.min(1, preset.cleanChance || 0.7));
+    const pollutedChance = Math.max(0, Math.min(1 - cleanChance, preset.pollutedChance || 0.2));
+    const pollutedThreshold = cleanChance + pollutedChance;
     let dropType;
     let points;
     let size;
 
-    if (rand < 0.7) {
-        // 70% chance: Clean water drop
+    if (rand < cleanChance) {
+        // Clean water drop (mode-adjusted chance)
         dropType = 'clean';
         points = 10;
         size = 40 + Math.random() * 20; // 40-60px
-    } else if (rand < 0.9) {
-        // 20% chance: Polluted drop
+    } else if (rand < pollutedThreshold) {
+        // Polluted drop (mode-adjusted chance)
         dropType = 'polluted';
         points = -20;
         size = 45 + Math.random() * 20; // 45-65px
     } else {
-        // 10% chance: Bonus jerry can
+        // Remaining chance: Bonus jerry can
         dropType = 'bonus';
         points = 50;
         size = 66 + Math.random() * 16; // 66-82px
@@ -585,8 +640,9 @@ function createDrop() {
     const xPosition = Math.random() * (containerWidth - size);
     drop.style.left = xPosition + 'px';
 
-    // Vary fall speed for visual interest (2-4 seconds)
-    const fallSpeed = 2 + Math.random() * 2;
+    // Fall speed shifts by weather mode so difficulty is clearly different.
+    const fallRange = Math.max(0, preset.dropFallMaxSec - preset.dropFallMinSec);
+    const fallSpeed = preset.dropFallMinSec + Math.random() * fallRange;
     drop.style.setProperty('--fall-duration', `${fallSpeed}s`);
     drop.style.setProperty('--drop-tilt', `${(Math.random() * 16 - 8).toFixed(2)}deg`);
     drop.style.setProperty('--drop-sway', `${(Math.random() * 8 + 5).toFixed(2)}px`);

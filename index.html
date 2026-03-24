@@ -56,13 +56,14 @@
                 <button id="reset-btn" class="btn btn-secondary">Reset</button>
                 <div class="weather-control">
                     <select id="weather-mode" class="weather-mode-select" aria-label="Choose storm intensity mode">
-                        <option value="calm">Calm</option>
-                        <option value="dramatic" selected>Dramatic</option>
-                        <option value="hard">Hard</option>
+                        <option value="calm">Calm (Easy)</option>
+                        <option value="dramatic" selected>Dramatic (Medium)</option>
+                        <option value="hard">Hard (Intense)</option>
                     </select>
                 </div>
             </div>
         </section>
+        <p id="weather-mode-hint" class="weather-mode-hint" aria-live="polite">Balanced challenge: steady pressure and frequent lightning windows.</p>
 
         <!-- Main game area where drops fall -->
         <section id="game-container" aria-label="Water zone">

@@ -366,6 +366,15 @@ body::before {
     padding: 8px;
 }
 
+.weather-mode-hint {
+    margin: -2px 2px 2px;
+    text-align: center;
+    font-size: 0.77rem;
+    letter-spacing: 0.04em;
+    color: #2f556f;
+    min-height: 1.2em;
+}
+
 .button-group {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -444,6 +453,10 @@ body::before {
     --lightning-core-alpha: 0.86;
     --lightning-edge-alpha: 0.3;
     --storm-cloud-visibility: 1;
+    --weather-overlay-opacity: 0.08;
+    --weather-overlay-tint: rgba(168, 223, 246, 0.42);
+    --rain-drop-width: 2px;
+    --rain-drop-height: 18px;
 }
 
 #game-container::after {
@@ -487,14 +500,31 @@ body::before {
 #game-container.weather-calm {
     --lightning-core-alpha: 0.6;
     --lightning-edge-alpha: 0.2;
-    --storm-cloud-visibility: 0.82;
+    --storm-cloud-visibility: 0.64;
+    --weather-overlay-opacity: 0.05;
+    --weather-overlay-tint: rgba(176, 231, 252, 0.34);
+    --rain-drop-width: 1.5px;
+    --rain-drop-height: 14px;
 }
 
-#game-container.weather-dramatic,
 #game-container.weather-hard {
+    --lightning-core-alpha: 1;
+    --lightning-edge-alpha: 0.48;
+    --storm-cloud-visibility: 1;
+    --weather-overlay-opacity: 0.24;
+    --weather-overlay-tint: rgba(62, 106, 134, 0.52);
+    --rain-drop-width: 2.5px;
+    --rain-drop-height: 22px;
+}
+
+#game-container.weather-dramatic {
     --lightning-core-alpha: 0.92;
     --lightning-edge-alpha: 0.38;
-    --storm-cloud-visibility: 1;
+    --storm-cloud-visibility: 0.9;
+    --weather-overlay-opacity: 0.14;
+    --weather-overlay-tint: rgba(119, 173, 202, 0.46);
+    --rain-drop-width: 2px;
+    --rain-drop-height: 18px;
 }
 
 /* Layered game environment so weather effects stay separate from gameplay logic. */
@@ -513,6 +543,15 @@ body::before {
     background:
         radial-gradient(circle at 22% 10%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 42%),
         linear-gradient(180deg, #e8f7ff 0%, #d2ebf8 44%, #b9ddee 100%);
+}
+
+.sky-layer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--weather-overlay-tint);
+    opacity: var(--weather-overlay-opacity);
+    pointer-events: none;
 }
 
 .cloud,
@@ -740,8 +779,8 @@ body::before {
 .rain-drop {
     position: absolute;
     top: -24px;
-    width: 2px;
-    height: 18px;
+    width: var(--rain-drop-width);
+    height: var(--rain-drop-height);
     border-radius: 2px;
     background: linear-gradient(180deg, rgba(233, 249, 255, 0.95), rgba(149, 210, 241, 0.4));
     opacity: 0.85;
@@ -1896,6 +1935,10 @@ body[data-theme="dark"] .theme-label,
 body[data-theme="dark"] .result-message,
 body[data-theme="dark"] .impact-footer {
     color: #9fb4c4;
+}
+
+body[data-theme="dark"] .weather-mode-hint {
+    color: #9fc4d8;
 }
 
 /* ==========================================
