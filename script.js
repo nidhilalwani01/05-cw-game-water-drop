@@ -103,8 +103,8 @@ const elements = {
 
 const weatherPresets = {
     calm: {
-        label: 'Calm (Easy)',
-        hint: 'Easy pace: slower drops, fewer polluted drops, and gentler storms.',
+        label: 'Level 1 - Calm (Easy)',
+        hint: 'Difficulty Level 1 selected: easy pace with slower drops, fewer polluted drops, and gentler storms.',
         stormDelayMin: 13000,
         stormDelayMax: 18000,
         stormDurationMs: 1900,
@@ -128,8 +128,8 @@ const weatherPresets = {
         lightningWarningBeats: 3,
     },
     dramatic: {
-        label: 'Dramatic (Medium)',
-        hint: 'Balanced challenge: steady pressure and frequent lightning windows.',
+        label: 'Level 2 - Dramatic (Medium)',
+        hint: 'Difficulty Level 2 selected: balanced challenge with steady pressure and frequent lightning windows.',
         stormDelayMin: 8000,
         stormDelayMax: 12000,
         stormDurationMs: 2800,
@@ -153,8 +153,8 @@ const weatherPresets = {
         lightningWarningBeats: 3,
     },
     hard: {
-        label: 'Hard (Intense)',
-        hint: 'Intense mode: faster drops, more polluted drops, and harsher storms.',
+        label: 'Level 3 - Hard (Intense)',
+        hint: 'Difficulty Level 3 selected: intense mode with faster drops, more polluted drops, and harsher storms.',
         stormDelayMin: 5200,
         stormDelayMax: 8200,
         stormDurationMs: 3400,
@@ -205,6 +205,7 @@ function applyTheme(theme) {
             'aria-label',
             isDark ? 'Switch to light mode' : 'Switch to dark mode'
         );
+        elements.themeToggle.disabled = false;
     }
 }
 
@@ -375,7 +376,7 @@ function applyWeatherMode(mode) {
     if (elements.weatherModeSelect) {
         elements.weatherModeSelect.value = selectedMode;
         elements.weatherModeSelect.setAttribute('title', preset.label);
-        elements.weatherModeSelect.setAttribute('aria-label', `Choose storm intensity mode. Current mode: ${preset.label}`);
+        elements.weatherModeSelect.setAttribute('aria-label', `Choose difficulty level. Current level: ${preset.label}`);
     }
 
     if (elements.weatherModeHint) {
@@ -429,7 +430,67 @@ initializeThemeToggle();
 initializeSoundSystem();
 initializeWeatherModeControl();
 initializeBucketControls();
+initializeAmbientParallax();
 requestAnimationFrame(gameLoop);
+
+function initializeAmbientParallax() {
+    let ticking = false;
+    let lastParallaxY = null;
+    let lastParallaxX = null;
+    let pointerOffsetX = 0;
+    let pointerOffsetY = 0;
+
+    const applyParallax = () => {
+        const scrollY = window.scrollY || window.pageYOffset || 0;
+        const scrollParallaxY = Math.max(-18, Math.min(18, scrollY * -0.03));
+        const nextParallaxX = Math.max(-12, Math.min(12, pointerOffsetX));
+        const nextParallaxY = Math.max(-22, Math.min(22, scrollParallaxY + pointerOffsetY));
+
+        if (lastParallaxX === null || Math.abs(nextParallaxX - lastParallaxX) > 0.08) {
+            document.documentElement.style.setProperty('--ambient-parallax-x', `${nextParallaxX.toFixed(2)}px`);
+            lastParallaxX = nextParallaxX;
+        }
+
+        if (lastParallaxY === null || Math.abs(nextParallaxY - lastParallaxY) > 0.08) {
+            document.documentElement.style.setProperty('--ambient-parallax-y', `${nextParallaxY.toFixed(2)}px`);
+            lastParallaxY = nextParallaxY;
+        }
+
+        ticking = false;
+    };
+
+    const onScroll = () => {
+        if (ticking) {
+            return;
+        }
+
+        ticking = true;
+        window.requestAnimationFrame(applyParallax);
+    };
+
+    const onPointerMove = (event) => {
+        const width = window.innerWidth || 1;
+        const height = window.innerHeight || 1;
+        const normalizedX = ((event.clientX / width) - 0.5) * 2;
+        const normalizedY = ((event.clientY / height) - 0.5) * 2;
+
+        pointerOffsetX = normalizedX * 5;
+        pointerOffsetY = normalizedY * 4;
+
+        onScroll();
+    };
+
+    const resetPointerDrift = () => {
+        pointerOffsetX = 0;
+        pointerOffsetY = 0;
+        onScroll();
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerleave', resetPointerDrift, { passive: true });
+    applyParallax();
+}
 
 // ==========================================
 // MAIN GAME FUNCTIONS

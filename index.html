@@ -11,6 +11,19 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <div class="ambient-water-bg" aria-hidden="true">
+        <span class="ambient-blob ambient-blob-1"></span>
+        <span class="ambient-blob ambient-blob-2"></span>
+        <span class="ambient-blob ambient-blob-3"></span>
+        <span class="ambient-blob ambient-blob-4"></span>
+        <span class="ambient-blob ambient-blob-5"></span>
+        <span class="ambient-blob ambient-blob-6"></span>
+        <span class="ambient-blob ambient-blob-7"></span>
+        <span class="ambient-blob ambient-blob-8"></span>
+        <span class="ambient-blob ambient-blob-9"></span>
+        <span class="ambient-blob ambient-blob-10"></span>
+    </div>
+
     <!-- Main game wrapper container -->
     <main class="game-wrapper">
         <!-- Header section with mission-driven message -->
@@ -65,15 +78,16 @@
                 <button id="start-btn" class="btn btn-primary">Start Game</button>
                 <button id="reset-btn" class="btn btn-secondary">Reset</button>
                 <div class="weather-control">
+                    <label for="weather-mode" class="weather-mode-label">Choose Difficulty Level</label>
                     <select id="weather-mode" class="weather-mode-select" aria-label="Choose storm intensity mode">
-                        <option value="calm">Calm (Easy)</option>
-                        <option value="dramatic" selected>Dramatic (Medium)</option>
-                        <option value="hard">Hard (Intense)</option>
+                        <option value="calm">Level 1 - Calm (Easy)</option>
+                        <option value="dramatic" selected>Level 2 - Dramatic (Medium)</option>
+                        <option value="hard">Level 3 - Hard (Intense)</option>
                     </select>
                 </div>
             </div>
         </section>
-        <p id="weather-mode-hint" class="weather-mode-hint" aria-live="polite">Balanced challenge: steady pressure and frequent lightning windows.</p>
+        <p id="weather-mode-hint" class="weather-mode-hint" aria-live="polite">Difficulty Level 2 selected: balanced challenge with steady pressure and frequent lightning windows.</p>
         <p id="action-feedback" class="action-feedback" aria-live="polite">Press Start to begin your clean water mission.</p>
 
         <!-- Main game area where drops fall -->
