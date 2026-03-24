@@ -49,6 +49,16 @@
             </article>
         </section>
 
+        <section class="impact-progress" aria-label="Impact progress">
+            <div class="impact-progress-header">
+                <p class="impact-label">Water Provided</p>
+                <p class="impact-value"><span id="impact-progress-value">0</span>%</p>
+            </div>
+            <div class="impact-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Water provided progress">
+                <span id="impact-progress-fill" class="impact-fill"></span>
+            </div>
+        </section>
+
         <!-- Game controls -->
         <section class="control-panel" aria-label="Game controls">
             <div class="button-group">
@@ -64,9 +74,18 @@
             </div>
         </section>
         <p id="weather-mode-hint" class="weather-mode-hint" aria-live="polite">Balanced challenge: steady pressure and frequent lightning windows.</p>
+        <p id="action-feedback" class="action-feedback" aria-live="polite">Press Start to begin your clean water mission.</p>
 
         <!-- Main game area where drops fall -->
         <section id="game-container" aria-label="Water zone">
+            <div id="pregame-overlay" class="pregame-overlay" aria-live="polite">
+                <p class="pregame-kicker">Mission Brief</p>
+                <h2 class="pregame-title">Catch clean water. Avoid pollution.</h2>
+                <p class="pregame-text">Press Start when you are ready. Stay focused through storms and reach 150 points.</p>
+            </div>
+            <div id="countdown-overlay" class="countdown-overlay hidden" aria-live="assertive" aria-atomic="true">
+                <span id="countdown-number" class="countdown-number">3</span>
+            </div>
             <div class="environment-layer" aria-hidden="true">
                 <div class="sky-layer">
                     <span class="cloud cloud-1"></span>
@@ -95,6 +114,7 @@
         <!-- Game over/win message (hidden until game ends) -->
         <div id="game-over-modal" class="modal hidden">
             <div class="modal-content">
+                <p id="result-status" class="result-status">Round Complete</p>
                 <h2 id="game-over-title">Keep Going!</h2>
                 <p id="game-over-message">Your final score is <span id="final-score">0</span></p>
                 <p class="result-message" id="result-message"></p>
