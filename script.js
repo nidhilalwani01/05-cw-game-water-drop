@@ -16,12 +16,16 @@ let gameState = {
     timerInterval: null,        // Store timer so we can stop it
     dropInterval: null,         // Store drop creation so we can stop it
     bucketX: 0,                 // Horizontal bucket position in px
-    bucketSpeed: 9,             // How fast the bucket moves with keyboard
+    bucketSpeed: 9,             // Legacy speed value retained for backwards compatibility
     bucketVelocity: 0,          // Current horizontal velocity for smooth movement
     bucketSteer: 0,             // Smoothed steering value so turns feel less abrupt
     bucketAcceleration: 1.1,    // Keyboard acceleration applied each frame
     bucketMaxSpeed: 13,         // Velocity cap to keep control predictable
+    steerLerp: 0.28,            // How quickly keyboard steering reacts to direction changes
     bucketFriction: 0.9,        // Friction when no input is pressed
+    baseBucketAcceleration: 1.1, // Baseline acceleration tuned for mobile-sized play areas
+    baseBucketMaxSpeed: 13,     // Baseline max speed tuned for mobile-sized play areas
+    speedScale: 1,              // Dynamic width-based movement multiplier
     touchTargetX: null,         // Active touch target in px while dragging
     touchIsActive: false,       // Whether a touch drag is currently controlling the bucket
     bucketFrozenUntil: 0,       // Timestamp until which lightning freezes movement
@@ -63,6 +67,7 @@ const elements = {
     playAgainBtn: document.getElementById('play-again-btn'),
     confettiCanvas: document.getElementById('confetti-canvas'),
     themeToggle: document.getElementById('theme-toggle'),
+    soundToggle: document.getElementById('sound-toggle'),
     weatherModeSelect: document.getElementById('weather-mode'),
     bucket: document.getElementById('collector-bucket'),
     rainLayer: document.getElementById('rain-layer'),
@@ -123,6 +128,11 @@ const inputState = {
     rightPressed: false,
 };
 
+const soundState = {
+    enabled: true,
+    audioContext: null,
+};
+
 // ==========================================
 // THEME TOGGLE (Visual only, does not affect game logic)
 // ==========================================
@@ -154,6 +164,144 @@ function initializeThemeToggle() {
             localStorage.setItem('drop-for-change-theme', nextTheme);
         });
     }
+}
+
+function updateSoundToggleUI() {
+    if (!elements.soundToggle) {
+        return;
+    }
+
+    elements.soundToggle.textContent = soundState.enabled ? 'Sound: On' : 'Sound: Off';
+    elements.soundToggle.setAttribute('aria-pressed', String(soundState.enabled));
+    elements.soundToggle.setAttribute(
+        'aria-label',
+        soundState.enabled ? 'Mute game sounds' : 'Unmute game sounds'
+    );
+
+    elements.soundToggle.classList.toggle('sound-off', !soundState.enabled);
+}
+
+function getAudioContext() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+        return null;
+    }
+
+    if (!soundState.audioContext) {
+        soundState.audioContext = new AudioContextClass();
+    }
+
+    if (soundState.audioContext.state === 'suspended') {
+        soundState.audioContext.resume().catch(() => {
+            // Ignore resume errors; a later interaction can unlock audio again.
+        });
+    }
+
+    return soundState.audioContext;
+}
+
+function playTone(startFrequency, endFrequency, durationSec = 0.1, volume = 0.045, type = 'sine') {
+    if (!soundState.enabled) {
+        return;
+    }
+
+    const audioContext = getAudioContext();
+    if (!audioContext) {
+        return;
+    }
+
+    const scheduleTone = () => {
+        const now = audioContext.currentTime;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(startFrequency, now);
+        oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, endFrequency), now + durationSec);
+
+        gainNode.gain.setValueAtTime(0.0001, now);
+        gainNode.gain.exponentialRampToValueAtTime(volume, now + 0.015);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.start(now);
+        oscillator.stop(now + durationSec + 0.01);
+    };
+
+    if (audioContext.state !== 'running') {
+        audioContext.resume().then(scheduleTone).catch(() => {
+            // Ignore resume failures; a later user interaction can retry.
+        });
+        return;
+    }
+
+    scheduleTone();
+}
+
+function playSoundEffect(effectName) {
+    if (!soundState.enabled) {
+        return;
+    }
+
+    switch (effectName) {
+        case 'start':
+            playTone(520, 760, 0.11, 0.08, 'triangle');
+            setTimeout(() => playTone(720, 940, 0.09, 0.075, 'triangle'), 75);
+            break;
+        case 'clean':
+            playTone(700, 880, 0.08, 0.055, 'sine');
+            break;
+        case 'bonus':
+            playTone(620, 980, 0.12, 0.09, 'triangle');
+            setTimeout(() => playTone(980, 1240, 0.12, 0.082, 'triangle'), 85);
+            break;
+        case 'polluted':
+            playTone(240, 130, 0.15, 0.078, 'sawtooth');
+            break;
+        case 'storm':
+            playTone(160, 85, 0.22, 0.085, 'square');
+            break;
+        case 'win':
+            playTone(540, 820, 0.12, 0.08, 'triangle');
+            setTimeout(() => playTone(820, 1180, 0.16, 0.075, 'triangle'), 100);
+            break;
+        case 'lose':
+            playTone(360, 220, 0.18, 0.078, 'sine');
+            break;
+        default:
+            break;
+    }
+}
+
+function initializeSoundSystem() {
+    // Always start enabled so grading/demo sessions consistently have sound.
+    soundState.enabled = true;
+    updateSoundToggleUI();
+
+    if (elements.soundToggle) {
+        elements.soundToggle.addEventListener('click', () => {
+            soundState.enabled = !soundState.enabled;
+
+            if (soundState.enabled) {
+                getAudioContext();
+                playTone(520, 700, 0.07, 0.06, 'triangle');
+            }
+
+            updateSoundToggleUI();
+        });
+    }
+
+    const unlockAudio = () => {
+        getAudioContext();
+        window.removeEventListener('pointerdown', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+    };
+
+    window.addEventListener('pointerdown', unlockAudio, { passive: true });
+    window.addEventListener('keydown', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio, { passive: true });
 }
 
 function getActiveWeatherPreset() {
@@ -193,6 +341,7 @@ elements.startBtn.addEventListener('click', startGame);
 elements.resetBtn.addEventListener('click', resetGame);
 elements.playAgainBtn.addEventListener('click', resetGame);
 initializeThemeToggle();
+initializeSoundSystem();
 initializeWeatherModeControl();
 initializeBucketControls();
 requestAnimationFrame(gameLoop);
@@ -218,6 +367,8 @@ function startGame() {
     // Update UI to reflect game status
     updateScore();
     updateTimer();
+    getAudioContext();
+    playSoundEffect('start');
     elements.startBtn.disabled = true;
     ensureBucketPosition();
 
@@ -362,6 +513,7 @@ function endGame() {
         elements.gameOverTitle.style.color = '#FFC907';
         elements.resultMessage.textContent =
             `You caught clean water, avoided polluted drops, and brought water closer for ${familiesHelped} ${familyLabel}.${highScoreMessage}`;
+        playSoundEffect('win');
         playConfetti();
     } else {
         const targetHint = pointsToNextFamily === gameState.targetScore
@@ -372,6 +524,7 @@ function endGame() {
         elements.gameOverTitle.style.color = '#FF902A';
         elements.resultMessage.textContent =
             `You are ${targetHint} points away from helping your first family. Catch clean drops, avoid polluted drops, and adjust to changing weather. High score: ${gameState.highScore}.`;
+        playSoundEffect('lose');
     }
 
     // Show the modal
@@ -485,7 +638,12 @@ function scorePoints(drop, points) {
     }
 
     if (dropType === 'polluted') {
+        playSoundEffect('polluted');
         triggerNegativeFlash();
+    } else if (dropType === 'bonus') {
+        playSoundEffect('bonus');
+    } else {
+        playSoundEffect('clean');
     }
 
     // Show feedback message based on item type
@@ -689,23 +847,23 @@ function showPointsFeedback(drop, points, type = 'clean') {
 
 function initializeBucketControls() {
     window.addEventListener('keydown', (event) => {
-        if (event.key === 'ArrowLeft') {
+        if (event.key === 'ArrowLeft' || event.key === 'a' || event.key === 'A') {
             inputState.leftPressed = true;
             event.preventDefault();
         }
 
-        if (event.key === 'ArrowRight') {
+        if (event.key === 'ArrowRight' || event.key === 'd' || event.key === 'D') {
             inputState.rightPressed = true;
             event.preventDefault();
         }
     });
 
     window.addEventListener('keyup', (event) => {
-        if (event.key === 'ArrowLeft') {
+        if (event.key === 'ArrowLeft' || event.key === 'a' || event.key === 'A') {
             inputState.leftPressed = false;
         }
 
-        if (event.key === 'ArrowRight') {
+        if (event.key === 'ArrowRight' || event.key === 'd' || event.key === 'D') {
             inputState.rightPressed = false;
         }
     });
@@ -750,6 +908,23 @@ function initializeBucketControls() {
         gameState.touchIsActive = false;
         gameState.bucketVelocity = 0;
     });
+
+    elements.gameContainer.addEventListener('mousemove', (event) => {
+        if (!gameState.isRunning || gameState.touchIsActive) {
+            return;
+        }
+
+        if (performance.now() < gameState.bucketFrozenUntil) {
+            return;
+        }
+
+        const containerRect = elements.gameContainer.getBoundingClientRect();
+        const bucketWidth = elements.bucket.offsetWidth;
+        const pointerTargetX = event.clientX - containerRect.left - (bucketWidth / 2);
+        setBucketX(pointerTargetX);
+        gameState.bucketVelocity = 0;
+        gameState.bucketSteer = 0;
+    });
 }
 
 function ensureBucketPosition() {
@@ -762,6 +937,23 @@ function ensureBucketPosition() {
     gameState.bucketX = (containerWidth - bucketWidth) / 2;
     gameState.hasBucketPosition = true;
     renderBucketPosition();
+}
+
+function updateBucketTuning() {
+    const containerWidth = elements.gameContainer.clientWidth || window.innerWidth || 390;
+    const mobileBaselineWidth = 390;
+    const rawScale = containerWidth / mobileBaselineWidth;
+
+    // Keep mobile feel intact while scaling desktop speed without becoming overly twitchy.
+    const speedScale = Math.min(2.6, Math.max(1, Math.pow(rawScale, 0.9)));
+    gameState.speedScale = speedScale;
+    gameState.bucketAcceleration = gameState.baseBucketAcceleration * speedScale;
+    gameState.bucketMaxSpeed = gameState.baseBucketMaxSpeed * speedScale;
+    gameState.steerLerp = Math.min(0.42, 0.28 + ((speedScale - 1) * 0.08));
+}
+
+function isDesktopControlProfile() {
+    return window.matchMedia('(min-width: 768px) and (pointer: fine)').matches;
 }
 
 function setBucketX(nextX) {
@@ -821,19 +1013,33 @@ function updateBucketMovement() {
     if (inputState.leftPressed) direction -= 1;
     if (inputState.rightPressed) direction += 1;
 
-    // Smooth direction changes so movement feels less twitchy.
-    gameState.bucketSteer += (direction - gameState.bucketSteer) * 0.28;
-
-    if (Math.abs(gameState.bucketSteer) > 0.01) {
-        gameState.bucketVelocity += gameState.bucketSteer * gameState.bucketAcceleration;
-    }
-
-    if (direction === 0 && gameState.touchTargetX === null) {
-        gameState.bucketVelocity *= gameState.bucketFriction;
-        gameState.bucketSteer *= 0.84;
-    }
-
     const maxSpeed = gameState.bucketMaxSpeed;
+
+    if (isDesktopControlProfile()) {
+        // Desktop profile: reduce inertia so keyboard movement feels immediate.
+        const targetVelocity = direction * maxSpeed;
+        const followStrength = direction === 0 ? 0.56 : 0.64;
+        gameState.bucketVelocity += (targetVelocity - gameState.bucketVelocity) * followStrength;
+
+        if (direction === 0) {
+            gameState.bucketSteer = 0;
+        } else {
+            gameState.bucketSteer = direction;
+        }
+    } else {
+        // Smooth direction changes so movement feels less twitchy.
+        gameState.bucketSteer += (direction - gameState.bucketSteer) * gameState.steerLerp;
+
+        if (Math.abs(gameState.bucketSteer) > 0.01) {
+            gameState.bucketVelocity += gameState.bucketSteer * gameState.bucketAcceleration;
+        }
+
+        if (direction === 0 && gameState.touchTargetX === null) {
+            gameState.bucketVelocity *= gameState.bucketFriction;
+            gameState.bucketSteer *= 0.84;
+        }
+    }
+
     gameState.bucketVelocity = Math.max(-maxSpeed, Math.min(maxSpeed, gameState.bucketVelocity));
 
     if (Math.abs(gameState.bucketVelocity) < 0.05) {
@@ -908,6 +1114,7 @@ function triggerLightningStrike() {
         elements.gameContainer.classList.remove('lightning-warning-dim');
         void elements.gameContainer.offsetWidth;
         elements.gameContainer.classList.add('lightning-active');
+        playSoundEffect('storm');
         triggerGameMoment('storm', 320);
         showFeedbackMessage('Storm strike! Movement briefly frozen.', 'storm', 1200);
         triggerHaptic([30, 50, 30]);
@@ -1292,6 +1499,8 @@ function drawConfetti(ctx, particle) {
 
 // Update confetti canvas size on window resize
 window.addEventListener('resize', () => {
+    updateBucketTuning();
+
     if (elements.confettiCanvas.style.display !== 'none') {
         elements.confettiCanvas.width = window.innerWidth;
         elements.confettiCanvas.height = window.innerHeight;
@@ -1300,3 +1509,5 @@ window.addEventListener('resize', () => {
     gameState.hasBucketPosition = false;
     ensureBucketPosition();
 });
+
+updateBucketTuning();

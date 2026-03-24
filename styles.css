@@ -125,6 +125,12 @@ body::before {
     padding: 4px 2px;
 }
 
+.header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .weather-control {
     display: flex;
     min-width: 0;
@@ -186,6 +192,12 @@ body::before {
 .theme-toggle:focus-visible {
     outline: 3px solid rgba(10, 74, 122, 0.25);
     outline-offset: 2px;
+}
+
+.sound-off {
+    background: #f5efe0;
+    color: #7f7564;
+    border-color: #ccbda0;
 }
 
 /* ==========================================
@@ -1640,6 +1652,12 @@ body[data-theme="dark"] .theme-toggle {
     box-shadow: none;
 }
 
+body[data-theme="dark"] .sound-off {
+    background: #2a333a;
+    color: #bdc7cf;
+    border-color: #4c5e6d;
+}
+
 body[data-theme="dark"] .weather-mode-select {
     background: #243848;
     color: #ffffff;
@@ -1923,6 +1941,10 @@ body[data-theme="dark"] .impact-footer {
         align-items: center;
         gap: 8px;
         padding: 4px 2px;
+    }
+
+    .header-actions {
+        gap: 6px;
     }
 
     .theme-label {

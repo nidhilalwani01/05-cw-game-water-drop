@@ -17,7 +17,10 @@
         <header class="header-section">
             <div class="header-top-row">
                 <p class="theme-label">Display Mode</p>
-                <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false">Dark Mode</button>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false">Dark Mode</button>
+                    <button id="sound-toggle" class="theme-toggle" type="button" aria-label="Mute game sounds" aria-pressed="true">Sound: On</button>
+                </div>
             </div>
             <a class="org-brand" href="https://www.charitywater.org/main" target="_blank" rel="noopener noreferrer" aria-label="Visit charity: water website">
                 <img src="img/cw_logo.png" alt="charity: water logo" class="org-logo">
@@ -104,7 +107,8 @@
         <!-- Game instructions -->
         <section class="instructions" aria-label="How to play">
             <h3>Mission: Adapt and Collect</h3>
-            <p class="mission-tip"><strong>Move the bucket:</strong> arrow keys or swipe.</p>
+            <p class="mission-tip"><strong>Desktop controls:</strong> Arrow keys, A/D keys, or move your mouse in the water zone.</p>
+            <p class="mission-tip"><strong>Phone controls:</strong> Swipe or drag your finger in the water zone.</p>
             <p class="legend-item"><span class="drop-icon clean material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Catch clean drops</strong> (+10) and jerry cans (+50).</p>
             <p class="legend-item"><span class="drop-icon polluted material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Avoid polluted drops</strong> (-20).</p>
             <p class="legend-item"><span class="drop-icon polluted material-symbols-rounded" aria-hidden="true">bolt</span> <strong>Watch the weather</strong> and react before lightning.</p>
