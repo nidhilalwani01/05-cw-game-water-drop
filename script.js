@@ -45,6 +45,7 @@ let gameState = {
     gameMomentTimeout: null,    // Timeout for short visual moment classes on the game container
     scorePulseTimeout: null,    // Timeout for score pulse class cleanup
     timerPulseTimeout: null,    // Timeout for timer pulse class cleanup
+    timerBurstTimeout: null,    // Timeout for Time Burst timer highlight cleanup
     goalPulseTimeout: null,     // Timeout for goal pulse class cleanup
     actionFeedbackTimeout: null, // Timeout for action feedback state cleanup
     scoreboardFlashTimeout: null, // Timeout for scoreboard gain/loss flash cleanup
@@ -213,6 +214,8 @@ const MAGNET_SPAWN_CHANCE = 0.04;
 const MAGNET_DURATION_MS = 6500;
 const MAGNET_PULL_RADIUS_PX = 920;
 const MAGNET_WARNING_LEAD_MS = 700;
+const TIME_BURST_SPAWN_CHANCE = 0.05;
+const TIME_BURST_SECONDS = 6;
 
 const STREAK_MULTIPLIERS = {
     medium: 1.2,
@@ -345,6 +348,10 @@ function playSoundEffect(effectName) {
         case 'bonus':
             playTone(620, 980, 0.12, 0.09, 'triangle');
             setTimeout(() => playTone(980, 1240, 0.12, 0.082, 'triangle'), 85);
+            break;
+        case 'time-burst':
+            playTone(560, 860, 0.1, 0.07, 'sine');
+            setTimeout(() => playTone(860, 1020, 0.08, 0.064, 'triangle'), 70);
             break;
         case 'magnet-off':
             playTone(560, 410, 0.11, 0.06, 'triangle');
@@ -743,6 +750,7 @@ function resetGame() {
     clearTimeout(gameState.gameMomentTimeout);
     clearTimeout(gameState.scorePulseTimeout);
     clearTimeout(gameState.timerPulseTimeout);
+    clearTimeout(gameState.timerBurstTimeout);
     clearTimeout(gameState.goalPulseTimeout);
     clearTimeout(gameState.actionFeedbackTimeout);
     clearTimeout(gameState.scoreboardFlashTimeout);
@@ -755,6 +763,7 @@ function resetGame() {
     gameState.gameMomentTimeout = null;
     gameState.scorePulseTimeout = null;
     gameState.timerPulseTimeout = null;
+    gameState.timerBurstTimeout = null;
     gameState.goalPulseTimeout = null;
     gameState.actionFeedbackTimeout = null;
     gameState.scoreboardFlashTimeout = null;
@@ -764,15 +773,19 @@ function resetGame() {
     gameState.magnetWarningTimeout = null;
 
     elements.gameContainer.classList.remove('bonus-moment');
+    elements.gameContainer.classList.remove('time-moment');
     elements.gameContainer.classList.remove('storm-moment');
     elements.gameContainer.classList.remove('negative-flash');
     elements.gameContainer.classList.remove('lightning-warning-dim');
     elements.bucket.classList.remove('bucket-bonus-boost');
+    elements.bucket.classList.remove('bucket-time-boost');
     elements.bucket.classList.remove('bucket-magnet-active');
     elements.scoreDisplay.classList.remove('score-pop');
     elements.timerDisplay.classList.remove('timer-low-pulse');
+    elements.timerDisplay.classList.remove('timer-burst-pop');
     elements.scoreCard?.classList.remove('stat-pop');
     elements.timerCard?.classList.remove('stat-pop');
+    elements.timerCard?.classList.remove('timer-card-burst');
     elements.goalCard?.classList.remove('stat-pop');
     elements.scoreboard?.classList.remove('score-positive', 'score-negative');
     elements.impactProgressSection?.classList.remove('impact-full-celebrate');
@@ -945,7 +958,13 @@ function createDrop() {
     let points;
     let size;
 
-    if (Math.random() < MAGNET_SPAWN_CHANCE) {
+    const powerUpRoll = Math.random();
+
+    if (powerUpRoll < TIME_BURST_SPAWN_CHANCE) {
+        dropType = 'powerup-time';
+        points = 0;
+        size = 44 + Math.random() * 8;
+    } else if (powerUpRoll < (TIME_BURST_SPAWN_CHANCE + MAGNET_SPAWN_CHANCE)) {
         dropType = 'powerup-magnet';
         points = 0;
         size = 46 + Math.random() * 10;
@@ -979,6 +998,8 @@ function createDrop() {
     drop.classList.add('material-symbols-rounded');
     if (dropType === 'powerup-magnet') {
         drop.textContent = 'auto_awesome';
+    } else if (dropType === 'powerup-time') {
+        drop.textContent = 'schedule';
     } else {
         drop.textContent = 'water_drop';
     }
@@ -995,7 +1016,7 @@ function createDrop() {
     const fallRange = Math.max(0, preset.dropFallMaxSec - preset.dropFallMinSec);
     const fallSpeed = preset.dropFallMinSec + Math.random() * fallRange;
     drop.style.setProperty('--fall-duration', `${fallSpeed}s`);
-    const dropTilt = dropType === 'powerup-magnet'
+    const dropTilt = dropType === 'powerup-magnet' || dropType === 'powerup-time'
         ? '0deg'
         : `${(Math.random() * 16 - 8).toFixed(2)}deg`;
     drop.style.setProperty('--drop-tilt', dropTilt);
@@ -1143,6 +1164,48 @@ function activateMagnetPowerUp(durationMs = MAGNET_DURATION_MS) {
     }, remainingMs + 20);
 }
 
+function triggerTimerBurstHighlight() {
+    elements.timerDisplay.classList.remove('timer-burst-pop');
+    elements.timerCard?.classList.remove('timer-card-burst');
+    void elements.timerDisplay.offsetWidth;
+    elements.timerDisplay.classList.add('timer-burst-pop');
+    elements.timerCard?.classList.add('timer-card-burst');
+
+    clearTimeout(gameState.timerBurstTimeout);
+    gameState.timerBurstTimeout = setTimeout(() => {
+        elements.timerDisplay.classList.remove('timer-burst-pop');
+        elements.timerCard?.classList.remove('timer-card-burst');
+    }, 480);
+}
+
+function showTimeBurstFeedback(drop, secondsAdded) {
+    const containerRect = elements.gameContainer.getBoundingClientRect();
+    const dropRect = drop.getBoundingClientRect();
+    const feedback = document.createElement('div');
+
+    feedback.style.position = 'absolute';
+    feedback.style.left = `${dropRect.left - containerRect.left + (dropRect.width / 2)}px`;
+    feedback.style.top = `${dropRect.top - containerRect.top}px`;
+    feedback.style.fontSize = '24px';
+    feedback.style.fontWeight = '800';
+    feedback.style.letterSpacing = '0.03em';
+    feedback.style.pointerEvents = 'none';
+    feedback.style.animation = 'popUpBonus 0.95s ease-out forwards';
+    feedback.style.color = '#5BE6FF';
+    feedback.style.textShadow = '0 0 16px rgba(91, 230, 255, 0.9), 2px 2px 4px rgba(0, 0, 0, 0.25)';
+    feedback.textContent = `+${secondsAdded}s`;
+
+    elements.gameContainer.appendChild(feedback);
+    setTimeout(() => feedback.remove(), 950);
+}
+
+function grantTimeBurst(secondsAdded, drop) {
+    gameState.timeRemaining += secondsAdded;
+    updateTimer();
+    triggerTimerBurstHighlight();
+    showTimeBurstFeedback(drop, secondsAdded);
+}
+
 function clearMagnetOffsets() {
     const magneticDrops = document.querySelectorAll('.drop:not(.polluted)');
 
@@ -1209,6 +1272,7 @@ function scorePoints(drop, points) {
     const isPolluted = drop.classList.contains('polluted');
     const isBonus = drop.classList.contains('bonus');
     const isMagnetPowerUp = drop.classList.contains('powerup-magnet');
+    const isTimePowerUp = drop.classList.contains('powerup-time');
 
     let awardedPoints = points;
 
@@ -1221,6 +1285,8 @@ function scorePoints(drop, points) {
         resetStreak();
     } else if (isMagnetPowerUp) {
         activateMagnetPowerUp();
+    } else if (isTimePowerUp) {
+        grantTimeBurst(TIME_BURST_SECONDS, drop);
     }
 
     // Update score (never go below 0)
@@ -1240,9 +1306,11 @@ function scorePoints(drop, points) {
         dropType = 'polluted';
     } else if (isMagnetPowerUp) {
         dropType = 'powerup-magnet';
+    } else if (isTimePowerUp) {
+        dropType = 'powerup-time';
     }
 
-    if (awardedPoints > 0 || isMagnetPowerUp) {
+    if (awardedPoints > 0 || isMagnetPowerUp || isTimePowerUp) {
         triggerBucketCatchGlow(dropType);
     }
 
@@ -1258,6 +1326,8 @@ function scorePoints(drop, points) {
         playSoundEffect('bonus');
     } else if (dropType === 'powerup-magnet') {
         playSoundEffect('bonus');
+    } else if (dropType === 'powerup-time') {
+        playSoundEffect('time-burst');
     } else {
         playSoundEffect('clean');
     }
@@ -1270,6 +1340,8 @@ function scorePoints(drop, points) {
         message = 'Polluted drop! Adjust and recover.';
     } else if (drop.classList.contains('powerup-magnet')) {
         message = 'Magnet active! Nearby clean drops are pulled in.';
+    } else if (drop.classList.contains('powerup-time')) {
+        message = `Time Burst! +${TIME_BURST_SECONDS} seconds.`;
     } else if (drop.classList.contains('bonus')) {
         message = 'Bonus can! Big boost for clean water access.';
     }
@@ -1285,6 +1357,9 @@ function scorePoints(drop, points) {
     } else if (dropType === 'powerup-magnet') {
         triggerGameMoment('bonus', 360);
         triggerHaptic([18, 40, 18]);
+    } else if (dropType === 'powerup-time') {
+        triggerGameMoment('time', 380);
+        triggerHaptic([14, 24, 14]);
     } else if (dropType === 'polluted') {
         triggerHaptic([25]);
     } else {
@@ -1292,9 +1367,13 @@ function scorePoints(drop, points) {
     }
     
     // Use top toast feedback for catches - skip for clean drops since streak shows that.
-    const feedbackType = dropType === 'powerup-magnet' ? 'bonus' : dropType;
+    const feedbackType = dropType === 'powerup-magnet'
+        ? 'bonus'
+        : (dropType === 'powerup-time' ? 'time' : dropType);
     const activeMultiplier = isClean ? getStreakMultiplier(gameState.streak) : 1;
-    const visualType = dropType === 'powerup-magnet' ? 'bonus' : dropType;
+    const visualType = dropType === 'powerup-magnet'
+        ? 'bonus'
+        : (dropType === 'powerup-time' ? 'time' : dropType);
     
     // Only show toast message for non-clean drops (polluted, bonus, magnet), clean catches are shown via streak
     if (!isClean) {
@@ -1302,7 +1381,7 @@ function scorePoints(drop, points) {
     }
     
     // Show points feedback (popups) for all drops
-    if (!isMagnetPowerUp) {
+    if (!isMagnetPowerUp && !isTimePowerUp) {
         showPointsFeedback(drop, awardedPoints, visualType, activeMultiplier);
     }
 
@@ -1340,6 +1419,7 @@ function triggerScoreboardFlash(type) {
 function triggerBucketCatchGlow(type = 'clean') {
     elements.bucket.classList.remove('bucket-catch-glow');
     elements.bucket.classList.remove('bucket-bonus-boost');
+    elements.bucket.classList.remove('bucket-time-boost');
     elements.bucket.classList.remove('bucket-catch-bounce');
     void elements.bucket.offsetWidth;
     elements.bucket.classList.add('bucket-catch-glow');
@@ -1347,6 +1427,8 @@ function triggerBucketCatchGlow(type = 'clean') {
 
     if (type === 'bonus') {
         elements.bucket.classList.add('bucket-bonus-boost');
+    } else if (type === 'powerup-time') {
+        elements.bucket.classList.add('bucket-time-boost');
     } else if (type === 'powerup-magnet') {
         elements.bucket.classList.add('bucket-magnet-active');
     }
@@ -1355,7 +1437,8 @@ function triggerBucketCatchGlow(type = 'clean') {
     gameState.bucketCatchGlowTimeout = setTimeout(() => {
         elements.bucket.classList.remove('bucket-catch-glow');
         elements.bucket.classList.remove('bucket-bonus-boost');
-    }, type === 'bonus' ? 420 : 260);
+        elements.bucket.classList.remove('bucket-time-boost');
+    }, type === 'bonus' ? 420 : (type === 'powerup-time' ? 380 : 260));
 }
 
 function triggerCatchBurst(drop, type) {
@@ -1376,7 +1459,7 @@ function triggerCatchParticles(drop, type) {
     const dropRect = drop.getBoundingClientRect();
     const originX = dropRect.left - containerRect.left + (dropRect.width / 2);
     const originY = dropRect.top - containerRect.top + (dropRect.height / 2);
-    const particleCount = type === 'bonus' ? 12 : (type === 'polluted' ? 7 : 9);
+    const particleCount = type === 'bonus' ? 12 : (type === 'polluted' ? 7 : (type === 'time' ? 10 : 9));
 
     // Small radial particles reinforce catch impact while staying visually clean.
     for (let i = 0; i < particleCount; i++) {
@@ -1386,7 +1469,7 @@ function triggerCatchParticles(drop, type) {
         const angle = (Math.PI * 2 * i) / particleCount + (Math.random() * 0.35);
         const distance = type === 'bonus'
             ? 34 + Math.random() * 18
-            : (type === 'polluted' ? 24 + Math.random() * 12 : 28 + Math.random() * 14);
+            : (type === 'polluted' ? 24 + Math.random() * 12 : (type === 'time' ? 30 + Math.random() * 16 : 28 + Math.random() * 14));
 
         particle.style.left = `${originX}px`;
         particle.style.top = `${originY}px`;
@@ -1405,10 +1488,12 @@ function triggerNegativeFlash() {
 }
 
 function triggerGameMoment(type, durationMs = 360) {
-    const className = type === 'storm' ? 'storm-moment' : 'bonus-moment';
+    const className = type === 'storm'
+        ? 'storm-moment'
+        : (type === 'time' ? 'time-moment' : 'bonus-moment');
 
     clearTimeout(gameState.gameMomentTimeout);
-    elements.gameContainer.classList.remove('bonus-moment', 'storm-moment');
+    elements.gameContainer.classList.remove('bonus-moment', 'time-moment', 'storm-moment');
     void elements.gameContainer.offsetWidth;
     elements.gameContainer.classList.add(className);
 
@@ -1941,6 +2026,7 @@ function endStorm() {
     elements.gameContainer.classList.remove('lightning-warning-dim');
     elements.gameContainer.classList.remove('lightning-warning-pattern');
     elements.gameContainer.classList.remove('bonus-moment');
+    elements.gameContainer.classList.remove('time-moment');
     elements.gameContainer.classList.remove('storm-moment');
     delete elements.gameContainer.dataset.lightningLabel;
 
@@ -1979,6 +2065,7 @@ function stopStormSystem() {
     elements.gameContainer.classList.remove('lightning-warning-dim');
     elements.gameContainer.classList.remove('lightning-warning-pattern');
     elements.gameContainer.classList.remove('bonus-moment');
+    elements.gameContainer.classList.remove('time-moment');
     elements.gameContainer.classList.remove('storm-moment');
     delete elements.gameContainer.dataset.lightningLabel;
     document.body.classList.remove('lightning-screen-shake');
@@ -2137,6 +2224,11 @@ function showFeedbackMessage(message, type = 'clean', durationMs = 2000) {
             .feedback-bonus {
                 background: rgba(255, 214, 61, 0.95);
                 color: #3b2a00;
+            }
+            .feedback-time {
+                background: rgba(93, 231, 255, 0.95);
+                color: #052536;
+                border-color: rgba(202, 248, 255, 0.68);
             }
             .feedback-storm {
                 background: rgba(34, 54, 77, 0.94);

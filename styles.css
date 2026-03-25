@@ -553,6 +553,14 @@ body::before {
 .stat-value.timer-low-pulse {
     animation: timerUrgencyPulse 0.72s ease-in-out infinite;
 }
+.stat-value.timer-burst-pop {
+    animation: timerBurstPop 0.46s cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+.stat-card.timer-card-burst {
+    animation: statCardPulse 0.36s ease-out;
+    box-shadow: 0 0 0 3px rgba(91, 230, 255, 0.3), var(--panel-shadow);
+    border-color: rgba(91, 230, 255, 0.62);
+}
 
 .stat-card:first-child .stat-value {
     font-size: clamp(1.95rem, 4.1vw, 2.75rem);
@@ -945,6 +953,10 @@ body::before {
 #game-container.bonus-moment::after {
     background: radial-gradient(circle at 50% 70%, rgba(255, 223, 84, 0.34), rgba(255, 223, 84, 0) 62%);
     animation: bonusMomentPulse 0.42s ease-out;
+}
+#game-container.time-moment::after {
+    background: radial-gradient(circle at 50% 70%, rgba(91, 230, 255, 0.34), rgba(91, 230, 255, 0) 62%);
+    animation: timeMomentPulse 0.4s ease-out;
 }
 
 #game-container.storm-moment::after {
@@ -1395,6 +1407,12 @@ body::before {
 .collector-bucket.bucket-bonus-boost {
     animation: bucketBonusBoost 0.38s ease-out;
 }
+.collector-bucket.bucket-time-boost {
+    animation: bucketTimeBoost 0.34s ease-out;
+    filter:
+        drop-shadow(0 0 10px rgba(91, 230, 255, 0.94))
+        drop-shadow(0 0 18px rgba(70, 196, 231, 0.72));
+}
 
 .collector-bucket.bucket-catch-bounce {
     animation: bucketCatchBounce 0.22s cubic-bezier(0.2, 0.75, 0.25, 1);
@@ -1431,6 +1449,10 @@ body::before {
     border: 2px solid rgba(255, 201, 7, 0.94);
     box-shadow: 0 0 14px rgba(255, 201, 7, 0.78);
 }
+.catch-burst-time {
+    border: 2px solid rgba(91, 230, 255, 0.94);
+    box-shadow: 0 0 14px rgba(91, 230, 255, 0.78);
+}
 
 .catch-particle {
     position: absolute;
@@ -1453,6 +1475,12 @@ body::before {
     height: 7px;
     background: radial-gradient(circle, rgba(255, 246, 184, 0.98), rgba(255, 201, 7, 0.9));
     box-shadow: 0 0 13px rgba(255, 201, 7, 0.72);
+}
+.catch-particle-time {
+    width: 7px;
+    height: 7px;
+    background: radial-gradient(circle, rgba(214, 252, 255, 0.98), rgba(84, 215, 245, 0.9));
+    box-shadow: 0 0 13px rgba(84, 215, 245, 0.72);
 }
 
 .catch-particle-polluted {
@@ -1532,6 +1560,23 @@ body::before {
         0 0 8px rgba(216, 243, 255, 0.7);
     animation: dropFallMagnet var(--fall-duration) linear forwards, dropSway 1.6s ease-in-out infinite, dropPulse 1.2s ease-in-out infinite;
     filter: drop-shadow(0 0 8px rgba(111, 198, 240, 0.6));
+}
+.drop.powerup-time {
+    border-radius: 999px;
+    color: #dffbff;
+    background: radial-gradient(circle at 32% 30%, rgba(236, 254, 255, 0.96), rgba(106, 224, 245, 0.9) 52%, rgba(58, 172, 214, 0.95) 100%);
+    text-shadow: 0 0 8px rgba(221, 250, 255, 0.95), 0 0 14px rgba(78, 198, 236, 0.85);
+    animation: dropFallMagnet var(--fall-duration) linear forwards, dropSway 1.7s ease-in-out infinite, dropPulse 1.05s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(102, 222, 245, 0.78));
+}
+.drop.powerup-time::after {
+    content: '';
+    position: absolute;
+    inset: 7%;
+    border-radius: 999px;
+    border: 2px solid rgba(225, 250, 255, 0.8);
+    opacity: 0.84;
+    pointer-events: none;
 }
 
 @keyframes dropFall {
@@ -1874,6 +1919,17 @@ body::before {
         transform: scale(1);
     }
 }
+@keyframes bucketTimeBoost {
+    0% {
+        transform: scale(1);
+    }
+    40% {
+        transform: scale(1.08);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
 
 @keyframes impactCelebrate {
     0% {
@@ -1884,6 +1940,17 @@ body::before {
     }
     100% {
         box-shadow: var(--panel-shadow), 0 0 0 rgba(255, 201, 7, 0);
+    }
+}
+@keyframes timeMomentPulse {
+    0% {
+        opacity: 0;
+    }
+    40% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
     }
 }
 
@@ -2179,6 +2246,20 @@ body::before {
     100% {
         transform: scale(1);
         opacity: 1;
+    }
+}
+@keyframes timerBurstPop {
+    0% {
+        transform: scale(1);
+        color: #2E9DF7;
+    }
+    45% {
+        transform: scale(1.14);
+        color: #52dcf3;
+    }
+    100% {
+        transform: scale(1);
+        color: #2E9DF7;
     }
 }
 
