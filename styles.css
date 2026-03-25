@@ -2418,6 +2418,10 @@ body::before {
     color: var(--cw-yellow);
 }
 
+.drop-icon.time {
+    color: #5be6ff;
+}
+
 .drop-icon.magnet {
     color: #59a8d8;
 }
