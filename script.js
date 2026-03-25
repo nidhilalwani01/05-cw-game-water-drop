@@ -132,17 +132,19 @@ const weatherPresets = {
         lightningWarningMs: 920,
         lightningFlashMs: 760,
         freezeMs: 520,
+        timeBurstChance: 0.065,
+        magnetChance: 0.055,
         rainBurstCount: 6,
         rainSpawnIntervalMs: 210,
         rainDurationMin: 0.62,
         rainDurationMax: 1,
         rainOpacityMin: 0.28,
         rainOpacityMax: 0.58,
-        dropSpawnIntervalMs: 940,
-        dropFallMinSec: 2.8,
-        dropFallMaxSec: 4.4,
-        cleanChance: 0.76,
-        pollutedChance: 0.14,
+        dropSpawnIntervalMs: 1080,
+        dropFallMinSec: 3.1,
+        dropFallMaxSec: 4.9,
+        cleanChance: 0.8,
+        pollutedChance: 0.12,
         stormPatternMs: [17000, 15000, 16200],
         stormDelayFloorMs: 7600,
         stormSpeedupMax: 0.3,
@@ -157,6 +159,8 @@ const weatherPresets = {
         lightningWarningMs: 600,
         lightningFlashMs: 1000,
         freezeMs: 900,
+        timeBurstChance: 0.05,
+        magnetChance: 0.04,
         rainBurstCount: 14,
         rainSpawnIntervalMs: 130,
         rainDurationMin: 0.45,
@@ -181,18 +185,20 @@ const weatherPresets = {
         stormDurationMs: 3400,
         lightningWarningMs: 430,
         lightningFlashMs: 1120,
-        freezeMs: 1350,
+        freezeMs: 1500,
+        timeBurstChance: 0.03,
+        magnetChance: 0.025,
         rainBurstCount: 18,
         rainSpawnIntervalMs: 95,
         rainDurationMin: 0.34,
         rainDurationMax: 0.62,
         rainOpacityMin: 0.56,
         rainOpacityMax: 0.98,
-        dropSpawnIntervalMs: 640,
-        dropFallMinSec: 1.45,
-        dropFallMaxSec: 2.75,
-        cleanChance: 0.6,
-        pollutedChance: 0.3,
+        dropSpawnIntervalMs: 560,
+        dropFallMinSec: 1.2,
+        dropFallMaxSec: 2.2,
+        cleanChance: 0.54,
+        pollutedChance: 0.34,
         stormPatternMs: [7600, 6800, 7200, 6200, 6600],
         stormDelayFloorMs: 3300,
         stormSpeedupMax: 0.4,
@@ -959,12 +965,18 @@ function createDrop() {
     let size;
 
     const powerUpRoll = Math.random();
+    const timeBurstChance = Number.isFinite(preset.timeBurstChance)
+        ? Math.max(0, Math.min(0.2, preset.timeBurstChance))
+        : TIME_BURST_SPAWN_CHANCE;
+    const magnetChance = Number.isFinite(preset.magnetChance)
+        ? Math.max(0, Math.min(0.2, preset.magnetChance))
+        : MAGNET_SPAWN_CHANCE;
 
-    if (powerUpRoll < TIME_BURST_SPAWN_CHANCE) {
+    if (powerUpRoll < timeBurstChance) {
         dropType = 'powerup-time';
         points = 0;
         size = 44 + Math.random() * 8;
-    } else if (powerUpRoll < (TIME_BURST_SPAWN_CHANCE + MAGNET_SPAWN_CHANCE)) {
+    } else if (powerUpRoll < (timeBurstChance + magnetChance)) {
         dropType = 'powerup-magnet';
         points = 0;
         size = 46 + Math.random() * 10;
@@ -2102,8 +2114,9 @@ function applyMagnetPull() {
     const bucketRect = elements.bucket.getBoundingClientRect();
     const bucketCenterX = bucketRect.left + (bucketRect.width / 2);
     const bucketCenterY = bucketRect.top + (bucketRect.height / 2);
-    const magnetCatchPaddingX = gameState.isMobileOptimized ? 52 : 28;
-    const magnetCatchPaddingY = gameState.isMobileOptimized ? 64 : 34;
+    const magnetCatchPaddingX = gameState.isMobileOptimized ? 88 : 52;
+    const magnetCatchPaddingY = gameState.isMobileOptimized ? 108 : 72;
+    const magnetAutoCatchDistance = gameState.isMobileOptimized ? 96 : 78;
     const magneticDrops = document.querySelectorAll('.drop:not(.polluted):not(.collected)');
 
     magneticDrops.forEach((drop) => {
@@ -2122,7 +2135,7 @@ function applyMagnetPull() {
             dropRect.bottom >= (bucketRect.top - magnetCatchPaddingY) &&
             dropRect.top <= (bucketRect.bottom + magnetCatchPaddingY);
 
-        if (inMagnetCatchZone) {
+        if (inMagnetCatchZone || distance <= magnetAutoCatchDistance) {
             scorePoints(drop, Number(drop.dataset.points));
             return;
         }
@@ -2132,22 +2145,23 @@ function applyMagnetPull() {
 
         if (distance <= pullRadius && distance > 0.01) {
             const normalizedDistance = 1 - (distance / pullRadius);
-            const basePullStrength = (normalizedDistance * 6.8) + 1.6;
-            const pullStrength = isBonusDrop ? basePullStrength * 2.4 : basePullStrength;
-            const directionX = deltaX / distance;
-            const directionY = deltaY / distance;
+            const basePullEase = 0.08 + (normalizedDistance * 0.16);
+            const pullEase = isBonusDrop ? Math.min(0.34, basePullEase * 1.12) : Math.min(0.3, basePullEase);
 
-            offsetX += directionX * pullStrength;
-            offsetY += directionY * pullStrength;
+            // Keep the visual pull subtle so drops still feel like they are falling naturally.
+            const targetOffsetX = deltaX * (isBonusDrop ? 0.52 : 0.42);
+            const targetOffsetY = deltaY * (isBonusDrop ? 0.3 : 0.24);
+            offsetX += (targetOffsetX - offsetX) * pullEase;
+            offsetY += (targetOffsetY - offsetY) * pullEase;
         } else {
             // Smoothly decay offsets when magnet is off, but decay faster to prevent dragging
-            offsetX *= 0.8;
-            offsetY *= 0.8;
+            offsetX *= 0.72;
+            offsetY *= 0.72;
         }
 
-        const maxOffsetX = isBonusDrop ? 500 : 420;
-        const maxOffsetYUp = isBonusDrop ? 380 : 340;
-        const maxOffsetYDown = isBonusDrop ? 700 : 580;
+        const maxOffsetX = isBonusDrop ? 280 : 220;
+        const maxOffsetYUp = isBonusDrop ? 170 : 140;
+        const maxOffsetYDown = isBonusDrop ? 280 : 240;
         const clampedOffsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, offsetX));
         const clampedOffsetY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, offsetY));
         drop.dataset.magnetOffsetX = String(clampedOffsetX);
@@ -2268,6 +2282,7 @@ function setActionFeedback(message, tone = 'alert', durationMs = 0) {
         return;
     }
 
+    elements.actionFeedback.style.display = 'block';
     elements.actionFeedback.textContent = message;
     elements.actionFeedback.classList.remove('feedback-positive', 'feedback-negative', 'feedback-alert');
 

@@ -63,7 +63,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: 32px 16px;
+    padding: clamp(10px, 2.4vw, 32px) clamp(8px, 1.8vw, 16px);
     font-family: "Manrope", "Helvetica Neue", Helvetica, Arial, sans-serif;
     line-height: 1.45;
     color: var(--text-main);
@@ -385,7 +385,7 @@ body::before {
     color: #1a5d86;
     border-radius: 999px;
     padding: 7px 13px;
-    min-height: 36px;
+    min-height: 42px;
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -710,7 +710,7 @@ body::before {
     border: 1px solid color-mix(in srgb, var(--border-main) 75%, #c5e1ed 25%);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(244, 251, 255, 0.8));
     color: #24465c;
-    font-size: 0.84rem;
+    font-size: clamp(0.78rem, 1.8vw, 0.92rem);
     font-weight: 700;
     line-height: 1.35;
     text-align: center;
@@ -812,7 +812,7 @@ body::before {
 
 #game-container {
     width: 100%;
-    height: 440px;
+    height: clamp(340px, 55vh, 440px);
     position: relative;
     overflow: hidden;
     border-radius: var(--radius-panel);
@@ -3067,7 +3067,7 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
 
 @media (max-width: 520px) {
     body {
-        padding: 8px 8px;
+        padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
     }
 
     #game-container {
@@ -3108,10 +3108,10 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
     }
 
     .weather-mode-select {
-        height: 42px;
-        min-height: 42px;
+        height: 44px;
+        min-height: 44px;
         padding: 0 11px;
-        font-size: 0.62rem;
+        font-size: 0.68rem;
         letter-spacing: 0.04em;
     }
 
@@ -3126,8 +3126,8 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
 
     .theme-toggle {
         padding: 6px 10px;
-        min-height: 30px;
-        font-size: 0.6rem;
+        min-height: 40px;
+        font-size: 0.68rem;
         letter-spacing: 0.05em;
     }
 
@@ -3142,7 +3142,7 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
     }
 
     .impact-progress {
-        display: none;
+        display: block;
         padding: 8px 8px 9px;
         border-radius: 12px;
     }
@@ -3216,8 +3216,8 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
     }
 
     .btn {
-        height: 42px;
-        min-height: 42px;
+        height: 44px;
+        min-height: 44px;
         padding: 8px 10px;
         font-size: 0.74rem;
         letter-spacing: 0.05em;
@@ -3241,7 +3241,7 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
 
     .action-feedback {
         min-height: 38px;
-        font-size: 0.68rem;
+        font-size: 0.74rem;
         padding: 7px 8px;
     }
 
@@ -3296,20 +3296,101 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
     }
 }
 
+@media (max-width: 380px) {
+    .game-wrapper {
+        padding: 9px;
+        gap: 7px;
+    }
+
+    .stat-card {
+        min-height: 74px;
+        padding: 7px 5px;
+    }
+
+    .stat-label {
+        font-size: 0.56rem;
+    }
+
+    .stat-value {
+        font-size: 1.06rem;
+    }
+
+    .theme-toggle,
+    .btn,
+    .weather-mode-select {
+        min-height: 40px;
+    }
+}
+
+@media (max-height: 720px) and (orientation: landscape) {
+    body {
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .game-wrapper {
+        gap: 10px;
+        padding: 12px;
+    }
+
+    #game-container {
+        height: min(52vh, 320px);
+        min-height: 260px;
+    }
+
+    .instructions {
+        padding: 12px;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
-        animation: none !important;
         transition: none !important;
     }
 
+    .ambient-water-bg::before,
+    .ambient-water-bg::after,
     .ambient-blob {
+        animation: none !important;
         transform: none !important;
     }
 
-    .ambient-water-bg::before,
-    .ambient-water-bg::after {
+    .cloud,
+    .storm-cloud,
+    .collector-bucket,
+    .scoreboard,
+    .game-wrapper,
+    .header-section,
+    .instructions,
+    .impact-footer,
+    .countdown-number,
+    .lightning-bolt,
+    .lightning-flash,
+    .rain-drop,
+    .drop.bonus,
+    .drop.powerup-magnet,
+    .drop.powerup-time,
+    .drop.clean,
+    .drop.polluted {
+        animation: none !important;
+    }
+
+    /* Keep core falling gameplay active while removing decorative sway/pulse motion. */
+    .drop {
+        animation: dropFall var(--fall-duration) linear forwards !important;
+    }
+
+    .drop.powerup-magnet,
+    .drop.powerup-time {
+        animation: dropFallMagnet var(--fall-duration) linear forwards !important;
+    }
+
+    .scoreboard .stat-card,
+    .stat-value,
+    .collector-bucket,
+    #game-container::after {
         animation: none !important;
         transform: none !important;
     }
