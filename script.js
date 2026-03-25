@@ -133,7 +133,7 @@ const weatherPresets = {
         lightningFlashMs: 760,
         freezeMs: 520,
         timeBurstChance: 0.065,
-        magnetChance: 0.055,
+        magnetChance: 0,
         rainBurstCount: 6,
         rainSpawnIntervalMs: 210,
         rainDurationMin: 0.62,
@@ -160,7 +160,7 @@ const weatherPresets = {
         lightningFlashMs: 1000,
         freezeMs: 900,
         timeBurstChance: 0.05,
-        magnetChance: 0.04,
+        magnetChance: 0,
         rainBurstCount: 14,
         rainSpawnIntervalMs: 130,
         rainDurationMin: 0.45,
@@ -187,7 +187,7 @@ const weatherPresets = {
         lightningFlashMs: 1120,
         freezeMs: 1500,
         timeBurstChance: 0.03,
-        magnetChance: 0.025,
+        magnetChance: 0,
         rainBurstCount: 18,
         rainSpawnIntervalMs: 95,
         rainDurationMin: 0.34,
@@ -1033,10 +1033,7 @@ function createDrop() {
         : `${(Math.random() * 16 - 8).toFixed(2)}deg`;
     drop.style.setProperty('--drop-tilt', dropTilt);
     drop.style.setProperty('--drop-sway', `${(Math.random() * 8 + 5).toFixed(2)}px`);
-    drop.style.setProperty('--magnet-offset-x', '0px');
-    drop.style.setProperty('--magnet-offset-y', '0px');
-    drop.dataset.magnetOffsetX = '0';
-    drop.dataset.magnetOffsetY = '0';
+    drop.dataset.baseSway = drop.style.getPropertyValue('--drop-sway') || '0px';
 
     // Add the drop to the game area
     elements.gameContainer.appendChild(drop);
@@ -1219,13 +1216,15 @@ function grantTimeBurst(secondsAdded, drop) {
 }
 
 function clearMagnetOffsets() {
-    const magneticDrops = document.querySelectorAll('.drop.clean');
+    const magneticDrops = document.querySelectorAll('.drop.magnet-target-clean');
 
     magneticDrops.forEach((drop) => {
         drop.dataset.magnetOffsetX = '0';
         drop.dataset.magnetOffsetY = '0';
+        drop.dataset.magnetLocked = '0';
         drop.style.setProperty('--magnet-offset-x', '0px');
         drop.style.setProperty('--magnet-offset-y', '0px');
+        drop.style.setProperty('--drop-sway', drop.dataset.baseSway || '0px');
     });
 }
 
@@ -2113,20 +2112,19 @@ function applyMagnetPull() {
 
     const bucketRect = elements.bucket.getBoundingClientRect();
     const bucketCenterX = bucketRect.left + (bucketRect.width / 2);
-    const bucketCenterY = bucketRect.top + (bucketRect.height / 2);
-    const magnetCatchPaddingX = gameState.isMobileOptimized ? 88 : 52;
-    const magnetCatchPaddingY = gameState.isMobileOptimized ? 108 : 72;
-    const magnetAutoCatchDistance = gameState.isMobileOptimized ? 96 : 78;
-    const magneticDrops = document.querySelectorAll('.drop.clean:not(.collected)');
+    const bucketRimY = bucketRect.top + (gameState.isMobileOptimized ? 8 : 6);
+    const magnetCatchPaddingX = gameState.isMobileOptimized ? 220 : 170;
+    const magnetCatchPaddingY = gameState.isMobileOptimized ? 250 : 200;
+    const magneticDrops = document.querySelectorAll('.drop.magnet-target-clean:not(.collected)');
 
     magneticDrops.forEach((drop) => {
         const dropRect = drop.getBoundingClientRect();
         const dropCenterX = dropRect.left + (dropRect.width / 2);
         const dropCenterY = dropRect.top + (dropRect.height / 2);
         const deltaX = bucketCenterX - dropCenterX;
-        const deltaY = bucketCenterY - dropCenterY;
+        const deltaY = bucketRimY - dropCenterY;
         const distance = Math.hypot(deltaX, deltaY);
-        const pullRadius = MAGNET_PULL_RADIUS_PX;
+        const pullRadius = MAGNET_PULL_RADIUS_PX + 260;
 
         const inMagnetCatchZone =
             dropRect.right >= (bucketRect.left - magnetCatchPaddingX) &&
@@ -2134,22 +2132,32 @@ function applyMagnetPull() {
             dropRect.bottom >= (bucketRect.top - magnetCatchPaddingY) &&
             dropRect.top <= (bucketRect.bottom + magnetCatchPaddingY);
 
-        if (inMagnetCatchZone || distance <= magnetAutoCatchDistance) {
-            scorePoints(drop, Number(drop.dataset.points));
-            return;
+        const isLocked = drop.dataset.magnetLocked === '1';
+        // Engage magnet on drops within full pull radius but also stay locked once engaged
+        const shouldLock = isLocked || inMagnetCatchZone || distance <= pullRadius;
+
+        if (shouldLock) {
+            drop.dataset.magnetLocked = '1';
+            // Disable side sway while magnet is pulling so motion feels direct.
+            drop.style.setProperty('--drop-sway', '0px');
+        } else {
+            drop.dataset.magnetLocked = '0';
+            drop.style.setProperty('--drop-sway', drop.dataset.baseSway || '0px');
         }
 
         let offsetX = Number(drop.dataset.magnetOffsetX || 0);
         let offsetY = Number(drop.dataset.magnetOffsetY || 0);
 
-        if (distance <= pullRadius && distance > 0.01) {
-            const normalizedDistance = 1 - (distance / pullRadius);
-            const basePullEase = 0.08 + (normalizedDistance * 0.16);
-            const pullEase = Math.min(0.3, basePullEase);
+        if (shouldLock && distance > 0.01) {
+            const normalizedDistance = 1 - Math.min(1, distance / pullRadius);
+            // Moderate easing so drops visibly travel toward bucket instead of vanishing
+            const pullEase = 0.32 + (normalizedDistance * 0.28);
 
-            // Keep the visual pull subtle so drops still feel like they are falling naturally.
-            const targetOffsetX = deltaX * 0.42;
-            const targetOffsetY = deltaY * 0.24;
+            // Home clean drops toward bucket with measured damping for visibility.
+            // Drops appear on-screen and gradually get pulled in as player moves bucket.
+            // Use stronger downward pull to help them fall INTO bucket, not around it.
+            const targetOffsetX = deltaX * 0.62;
+            const targetOffsetY = deltaY * 0.85;
             offsetX += (targetOffsetX - offsetX) * pullEase;
             offsetY += (targetOffsetY - offsetY) * pullEase;
         } else {
@@ -2158,34 +2166,41 @@ function applyMagnetPull() {
             offsetY *= 0.72;
         }
 
-        const maxOffsetX = 220;
-        const maxOffsetYUp = 140;
-        const maxOffsetYDown = 240;
+        const maxOffsetX = 520;
+        const maxOffsetYUp = 380;
+        const maxOffsetYDown = 540;
         const clampedOffsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, offsetX));
         const clampedOffsetY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, offsetY));
         drop.dataset.magnetOffsetX = String(clampedOffsetX);
         drop.dataset.magnetOffsetY = String(clampedOffsetY);
         drop.style.setProperty('--magnet-offset-x', `${clampedOffsetX.toFixed(2)}px`);
         drop.style.setProperty('--magnet-offset-y', `${clampedOffsetY.toFixed(2)}px`);
+
+        // Score when drop is pulled close enough to bucket or enters catch zone.
+        // Enlarged zone to catch drops that complete their magnet journey.
+        const updatedRect = drop.getBoundingClientRect();
+        const catchPaddingX = gameState.isMobileOptimized ? 80 : 60;
+        const catchPaddingY = gameState.isMobileOptimized ? 100 : 80;
+        const reachedBucket =
+            updatedRect.bottom >= (bucketRect.top - catchPaddingY) &&
+            updatedRect.top <= (bucketRect.bottom + catchPaddingY) &&
+            updatedRect.left < (bucketRect.right + catchPaddingX) &&
+            updatedRect.right > (bucketRect.left - catchPaddingX);
+
+        if (reachedBucket) {
+            scorePoints(drop, Number(drop.dataset.points));
+        }
     });
 }
 
 function gameLoop(timestamp = performance.now()) {
     if (gameState.isRunning) {
-        updateMagnetCountdownDisplay();
         updateBucketMovement();
-
-        if ((timestamp - gameState.lastMagnetPullCheckAt) >= gameState.magnetFrameIntervalMs) {
-            applyMagnetPull();
-            gameState.lastMagnetPullCheckAt = timestamp;
-        }
 
         if ((timestamp - gameState.lastCollisionCheckAt) >= gameState.collisionFrameIntervalMs) {
             checkDropCollisions();
             gameState.lastCollisionCheckAt = timestamp;
         }
-    } else {
-        updateMagnetCountdownDisplay();
     }
 
     requestAnimationFrame(gameLoop);
