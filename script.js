@@ -1041,36 +1041,34 @@ function getStreakMultiplier(streakCount) {
 }
 
 function updateStreakDisplay() {
-    if (!elements.streakDisplay) {
-        return;
-    }
-
     const multiplier = getStreakMultiplier(gameState.streak);
     const streakTierOne = gameState.streak >= 3;
     const streakTierTwo = gameState.streak >= 7;
     const streakTierThree = gameState.streak >= 12;
 
-    if (gameState.isMobileOptimized) {
-        if (gameState.streak === 0) {
+    if (elements.streakDisplay) {
+        if (gameState.isMobileOptimized) {
+            if (gameState.streak === 0) {
+                elements.streakDisplay.textContent = 'Streak 0';
+            } else if (gameState.streak < 3) {
+                elements.streakDisplay.textContent = `Streak ${gameState.streak}/3`;
+            } else {
+                elements.streakDisplay.textContent = `Streak ${gameState.streak} x${multiplier.toFixed(1)}`;
+            }
+        } else if (gameState.streak === 0) {
             elements.streakDisplay.textContent = 'Streak 0';
         } else if (gameState.streak < 3) {
-            elements.streakDisplay.textContent = `Streak ${gameState.streak}/3`;
+            elements.streakDisplay.textContent = `Streak ${gameState.streak} - 3 catches for bonus`;
         } else {
-            elements.streakDisplay.textContent = `Streak ${gameState.streak} x${multiplier.toFixed(1)}`;
+            elements.streakDisplay.textContent = `Streak ${gameState.streak} x${multiplier.toFixed(1)} active - do not miss`;
         }
-    } else if (gameState.streak === 0) {
-        elements.streakDisplay.textContent = 'Streak 0';
-    } else if (gameState.streak < 3) {
-        elements.streakDisplay.textContent = `Streak ${gameState.streak} - 3 catches for bonus`;
-    } else {
-        elements.streakDisplay.textContent = `Streak ${gameState.streak} x${multiplier.toFixed(1)} active - do not miss`;
-    }
 
-    if (gameState.isMobileOptimized) {
-        elements.streakDisplay.classList.remove('streak-active', 'streak-warning');
-    } else {
-        elements.streakDisplay.classList.toggle('streak-active', gameState.streak >= 3);
-        elements.streakDisplay.classList.toggle('streak-warning', gameState.streak >= 3);
+        if (gameState.isMobileOptimized) {
+            elements.streakDisplay.classList.remove('streak-active', 'streak-warning');
+        } else {
+            elements.streakDisplay.classList.toggle('streak-active', gameState.streak >= 3);
+            elements.streakDisplay.classList.toggle('streak-warning', gameState.streak >= 3);
+        }
     }
 
     if (elements.scoreCard) {
@@ -2196,6 +2194,14 @@ function setActionFeedback(message, tone = 'alert', durationMs = 0) {
             elements.actionFeedback?.classList.add('feedback-alert');
         }, durationMs);
     }
+}
+
+function clearActionFeedback() {
+    if (!elements.actionFeedback) {
+        return;
+    }
+    elements.actionFeedback.style.display = 'none';
+    elements.actionFeedback.classList.remove('feedback-positive', 'feedback-negative', 'feedback-alert');
 }
 
 // ==========================================

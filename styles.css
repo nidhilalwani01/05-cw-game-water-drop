@@ -558,27 +558,7 @@ body::before {
     font-size: clamp(1.95rem, 4.1vw, 2.75rem);
 }
 
-.streak-display {
-    margin: 6px 0 0;
-    font-size: 1.2rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #2c739f;
-    font-weight: 800;
-    min-height: 1.4em;
-    line-height: 1.2;
-}
 
-.streak-display.streak-active {
-    color: #0f4f7a;
-    font-size: 1.35rem;
-    font-weight: 900;
-}
-
-.streak-display.streak-warning {
-    color: #0f4f7a;
-    font-weight: 900;
-}
 
 .scoreboard .stat-card:first-child.streak-hot {
     border-color: rgba(76, 160, 209, 0.72);
@@ -2792,21 +2772,6 @@ body[data-theme="dark"] .impact-footer {
     color: #9fb4c4;
 }
 
-body[data-theme="dark"] .streak-display {
-    color: #7ed4ff;
-    font-weight: 800;
-}
-
-body[data-theme="dark"] .streak-display.streak-active {
-    color: #a8e6ff;
-    font-weight: 900;
-}
-
-body[data-theme="dark"] .streak-display.streak-warning {
-    color: #a8e6ff;
-    font-weight: 900;
-}
-
 body[data-theme="dark"] .scoreboard .stat-card:first-child.streak-hot {
     border-color: rgba(109, 186, 231, 0.72);
     box-shadow: 0 0 0 2px rgba(95, 177, 225, 0.24), 0 10px 24px rgba(26, 77, 112, 0.36);
@@ -2966,12 +2931,6 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
     animation: none;
 }
 
-body.mobile-optimized .streak-display,
-body.mobile-optimized .streak-display.streak-active,
-body.mobile-optimized .streak-display.streak-warning {
-    display: none;
-}
-
 /* ==========================================
    RESPONSIVE ADJUSTMENTS
    ========================================== */
@@ -2993,12 +2952,6 @@ body.mobile-optimized .streak-display.streak-warning {
     .scoreboard .stat-card,
     .scoreboard .stat-card:first-child {
         min-height: 98px;
-    }
-
-    .scoreboard .streak-display,
-    .scoreboard .streak-display.streak-active,
-    .scoreboard .streak-display.streak-warning {
-        display: none;
     }
 
     .scoreboard .stat-card.stat-pop,
@@ -3100,6 +3053,7 @@ body.mobile-optimized .streak-display.streak-warning {
     }
 
     .impact-progress {
+        display: none;
         padding: 8px 8px 9px;
         border-radius: 12px;
     }
@@ -3153,12 +3107,6 @@ body.mobile-optimized .streak-display.streak-warning {
 
     .stat-value {
         font-size: 1.2rem;
-    }
-
-    .scoreboard .streak-display,
-    .scoreboard .streak-display.streak-active,
-    .scoreboard .streak-display.streak-warning {
-        display: none;
     }
 
     #game-container {
