@@ -302,13 +302,15 @@ function playTone(startFrequency, endFrequency, durationSec = 0.1, volume = 0.04
         const now = audioContext.currentTime;
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
+        const isMobileAudioProfile = window.matchMedia('(pointer: coarse)').matches;
+        const effectiveVolume = Math.min(0.18, volume * (isMobileAudioProfile ? 1.85 : 1));
 
         oscillator.type = type;
         oscillator.frequency.setValueAtTime(startFrequency, now);
         oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, endFrequency), now + durationSec);
 
         gainNode.gain.setValueAtTime(0.0001, now);
-        gainNode.gain.exponentialRampToValueAtTime(volume, now + 0.015);
+        gainNode.gain.exponentialRampToValueAtTime(effectiveVolume, now + 0.015);
         gainNode.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
 
         oscillator.connect(gainNode);
@@ -343,6 +345,10 @@ function playSoundEffect(effectName) {
         case 'bonus':
             playTone(620, 980, 0.12, 0.09, 'triangle');
             setTimeout(() => playTone(980, 1240, 0.12, 0.082, 'triangle'), 85);
+            break;
+        case 'magnet-off':
+            playTone(560, 410, 0.11, 0.06, 'triangle');
+            setTimeout(() => playTone(410, 300, 0.1, 0.052, 'sine'), 70);
             break;
         case 'polluted':
             playTone(240, 130, 0.15, 0.078, 'sawtooth');
@@ -381,7 +387,13 @@ function initializeSoundSystem() {
     }
 
     const unlockAudio = () => {
-        getAudioContext();
+        const audioContext = getAudioContext();
+        if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume().catch(() => {
+                // Ignore resume failures; another gesture can retry.
+            });
+        }
+
         window.removeEventListener('pointerdown', unlockAudio);
         window.removeEventListener('keydown', unlockAudio);
         window.removeEventListener('touchstart', unlockAudio);
@@ -390,6 +402,15 @@ function initializeSoundSystem() {
     window.addEventListener('pointerdown', unlockAudio, { passive: true });
     window.addEventListener('keydown', unlockAudio);
     window.addEventListener('touchstart', unlockAudio, { passive: true });
+
+    elements.startBtn?.addEventListener('click', () => {
+        const audioContext = getAudioContext();
+        if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume().catch(() => {
+                // Ignore resume failures; the user can retry with another tap.
+            });
+        }
+    });
 }
 
 function getActiveWeatherPreset() {
@@ -476,7 +497,7 @@ function applyDevicePerformanceProfile() {
 
     if (gameState.isMobileOptimized) {
         gameState.collisionFrameIntervalMs = 34;
-        gameState.magnetFrameIntervalMs = 50;
+        gameState.magnetFrameIntervalMs = 24;
     } else {
         gameState.collisionFrameIntervalMs = 16;
         gameState.magnetFrameIntervalMs = 16;
@@ -1120,6 +1141,7 @@ function activateMagnetPowerUp(durationMs = MAGNET_DURATION_MS) {
 
         elements.bucket.classList.remove('bucket-magnet-active');
         clearMagnetOffsets();
+        playSoundEffect('magnet-off');
     }, remainingMs + 20);
 }
 
@@ -1995,6 +2017,8 @@ function applyMagnetPull() {
     const bucketRect = elements.bucket.getBoundingClientRect();
     const bucketCenterX = bucketRect.left + (bucketRect.width / 2);
     const bucketCenterY = bucketRect.top + (bucketRect.height / 2);
+    const magnetCatchPaddingX = gameState.isMobileOptimized ? 52 : 28;
+    const magnetCatchPaddingY = gameState.isMobileOptimized ? 64 : 34;
     const magneticDrops = document.querySelectorAll('.drop:not(.polluted):not(.collected)');
 
     magneticDrops.forEach((drop) => {
@@ -2006,6 +2030,17 @@ function applyMagnetPull() {
         const distance = Math.hypot(deltaX, deltaY);
         const isBonusDrop = drop.classList.contains('bonus');
         const pullRadius = isBonusDrop ? MAGNET_PULL_RADIUS_PX + 90 : MAGNET_PULL_RADIUS_PX;
+
+        const inMagnetCatchZone =
+            dropRect.right >= (bucketRect.left - magnetCatchPaddingX) &&
+            dropRect.left <= (bucketRect.right + magnetCatchPaddingX) &&
+            dropRect.bottom >= (bucketRect.top - magnetCatchPaddingY) &&
+            dropRect.top <= (bucketRect.bottom + magnetCatchPaddingY);
+
+        if (inMagnetCatchZone) {
+            scorePoints(drop, Number(drop.dataset.points));
+            return;
+        }
 
         let offsetX = Number(drop.dataset.magnetOffsetX || 0);
         let offsetY = Number(drop.dataset.magnetOffsetY || 0);
