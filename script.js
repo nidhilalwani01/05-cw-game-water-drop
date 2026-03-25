@@ -1219,7 +1219,7 @@ function grantTimeBurst(secondsAdded, drop) {
 }
 
 function clearMagnetOffsets() {
-    const magneticDrops = document.querySelectorAll('.drop:not(.polluted)');
+    const magneticDrops = document.querySelectorAll('.drop.clean');
 
     magneticDrops.forEach((drop) => {
         drop.dataset.magnetOffsetX = '0';
@@ -2117,7 +2117,7 @@ function applyMagnetPull() {
     const magnetCatchPaddingX = gameState.isMobileOptimized ? 88 : 52;
     const magnetCatchPaddingY = gameState.isMobileOptimized ? 108 : 72;
     const magnetAutoCatchDistance = gameState.isMobileOptimized ? 96 : 78;
-    const magneticDrops = document.querySelectorAll('.drop:not(.polluted):not(.collected)');
+    const magneticDrops = document.querySelectorAll('.drop.clean:not(.collected)');
 
     magneticDrops.forEach((drop) => {
         const dropRect = drop.getBoundingClientRect();
@@ -2126,8 +2126,7 @@ function applyMagnetPull() {
         const deltaX = bucketCenterX - dropCenterX;
         const deltaY = bucketCenterY - dropCenterY;
         const distance = Math.hypot(deltaX, deltaY);
-        const isBonusDrop = drop.classList.contains('bonus');
-        const pullRadius = isBonusDrop ? MAGNET_PULL_RADIUS_PX + 90 : MAGNET_PULL_RADIUS_PX;
+        const pullRadius = MAGNET_PULL_RADIUS_PX;
 
         const inMagnetCatchZone =
             dropRect.right >= (bucketRect.left - magnetCatchPaddingX) &&
@@ -2146,11 +2145,11 @@ function applyMagnetPull() {
         if (distance <= pullRadius && distance > 0.01) {
             const normalizedDistance = 1 - (distance / pullRadius);
             const basePullEase = 0.08 + (normalizedDistance * 0.16);
-            const pullEase = isBonusDrop ? Math.min(0.34, basePullEase * 1.12) : Math.min(0.3, basePullEase);
+            const pullEase = Math.min(0.3, basePullEase);
 
             // Keep the visual pull subtle so drops still feel like they are falling naturally.
-            const targetOffsetX = deltaX * (isBonusDrop ? 0.52 : 0.42);
-            const targetOffsetY = deltaY * (isBonusDrop ? 0.3 : 0.24);
+            const targetOffsetX = deltaX * 0.42;
+            const targetOffsetY = deltaY * 0.24;
             offsetX += (targetOffsetX - offsetX) * pullEase;
             offsetY += (targetOffsetY - offsetY) * pullEase;
         } else {
@@ -2159,9 +2158,9 @@ function applyMagnetPull() {
             offsetY *= 0.72;
         }
 
-        const maxOffsetX = isBonusDrop ? 280 : 220;
-        const maxOffsetYUp = isBonusDrop ? 170 : 140;
-        const maxOffsetYDown = isBonusDrop ? 280 : 240;
+        const maxOffsetX = 220;
+        const maxOffsetYUp = 140;
+        const maxOffsetYDown = 240;
         const clampedOffsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, offsetX));
         const clampedOffsetY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, offsetY));
         drop.dataset.magnetOffsetX = String(clampedOffsetX);
