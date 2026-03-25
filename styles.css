@@ -2969,10 +2969,7 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
 body.mobile-optimized .streak-display,
 body.mobile-optimized .streak-display.streak-active,
 body.mobile-optimized .streak-display.streak-warning {
-    font-size: 0.72rem;
-    min-height: 1.2em;
-    line-height: 1.15;
-    white-space: nowrap;
+    display: none;
 }
 
 /* ==========================================
@@ -3001,10 +2998,7 @@ body.mobile-optimized .streak-display.streak-warning {
     .scoreboard .streak-display,
     .scoreboard .streak-display.streak-active,
     .scoreboard .streak-display.streak-warning {
-        font-size: 0.72rem;
-        min-height: 1.2em;
-        line-height: 1.15;
-        white-space: nowrap;
+        display: none;
     }
 
     .scoreboard .stat-card.stat-pop,
@@ -3163,8 +3157,7 @@ body.mobile-optimized .streak-display.streak-warning {
     .scoreboard .streak-display,
     .scoreboard .streak-display.streak-active,
     .scoreboard .streak-display.streak-warning {
-        font-size: 0.66rem;
-        letter-spacing: 0.03em;
+        display: none;
     }
 
     #game-container {
