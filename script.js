@@ -1029,7 +1029,15 @@ function updateStreakDisplay() {
     const streakTierTwo = gameState.streak >= 7;
     const streakTierThree = gameState.streak >= 12;
 
-    if (gameState.streak === 0) {
+    if (gameState.isMobileOptimized) {
+        if (gameState.streak === 0) {
+            elements.streakDisplay.textContent = 'Streak 0';
+        } else if (gameState.streak < 3) {
+            elements.streakDisplay.textContent = `Streak ${gameState.streak}/3`;
+        } else {
+            elements.streakDisplay.textContent = `Streak ${gameState.streak} x${multiplier.toFixed(1)}`;
+        }
+    } else if (gameState.streak === 0) {
         elements.streakDisplay.textContent = 'Streak 0';
     } else if (gameState.streak < 3) {
         elements.streakDisplay.textContent = `Streak ${gameState.streak} - 3 catches for bonus`;

@@ -2960,6 +2960,21 @@ body.mobile-optimized .storm-cloud-3 {
     display: none;
 }
 
+body.mobile-optimized .stat-card.stat-pop,
+body.mobile-optimized .stat-value.score-pop,
+body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
+    animation: none;
+}
+
+body.mobile-optimized .streak-display,
+body.mobile-optimized .streak-display.streak-active,
+body.mobile-optimized .streak-display.streak-warning {
+    font-size: 1rem;
+    min-height: 1.2em;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+
 /* ==========================================
    RESPONSIVE ADJUSTMENTS
    ========================================== */
