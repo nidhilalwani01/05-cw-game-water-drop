@@ -1045,8 +1045,12 @@ function updateStreakDisplay() {
         elements.streakDisplay.textContent = `Streak ${gameState.streak} x${multiplier.toFixed(1)} active - do not miss`;
     }
 
-    elements.streakDisplay.classList.toggle('streak-active', gameState.streak >= 3);
-    elements.streakDisplay.classList.toggle('streak-warning', gameState.streak >= 3);
+    if (gameState.isMobileOptimized) {
+        elements.streakDisplay.classList.remove('streak-active', 'streak-warning');
+    } else {
+        elements.streakDisplay.classList.toggle('streak-active', gameState.streak >= 3);
+        elements.streakDisplay.classList.toggle('streak-warning', gameState.streak >= 3);
+    }
 
     if (elements.scoreCard) {
         elements.scoreCard.classList.toggle('streak-hot', streakTierOne);

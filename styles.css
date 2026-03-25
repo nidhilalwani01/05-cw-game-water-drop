@@ -2969,7 +2969,7 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
 body.mobile-optimized .streak-display,
 body.mobile-optimized .streak-display.streak-active,
 body.mobile-optimized .streak-display.streak-warning {
-    font-size: 1rem;
+    font-size: 0.82rem;
     min-height: 1.2em;
     line-height: 1.15;
     white-space: nowrap;
@@ -2991,6 +2991,29 @@ body.mobile-optimized .streak-display.streak-warning {
 
     .btn {
         width: 100%;
+    }
+
+    .scoreboard .stat-card,
+    .scoreboard .stat-card:first-child {
+        min-height: 98px;
+    }
+
+    .scoreboard .streak-display,
+    .scoreboard .streak-display.streak-active,
+    .scoreboard .streak-display.streak-warning {
+        font-size: 0.84rem;
+        min-height: 1.2em;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .scoreboard .stat-card.stat-pop,
+    .scoreboard .stat-value.score-pop,
+    .scoreboard .stat-value.timer-low-pulse,
+    .scoreboard .stat-card:first-child.streak-hot-3 {
+        animation: none;
     }
 }
 
@@ -3137,6 +3160,13 @@ body.mobile-optimized .streak-display.streak-warning {
 
     .stat-value {
         font-size: 1.4rem;
+    }
+
+    .scoreboard .streak-display,
+    .scoreboard .streak-display.streak-active,
+    .scoreboard .streak-display.streak-warning {
+        font-size: 0.76rem;
+        letter-spacing: 0.05em;
     }
 
     #game-container {
