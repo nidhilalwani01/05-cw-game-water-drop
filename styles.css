@@ -3332,6 +3332,15 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
         top: 90px;
     }
 
+    .milestone-feedback {
+        top: 94px;
+        width: min(86%, 340px);
+        padding: 12px 18px;
+        font-size: 1rem;
+        line-height: 1.35;
+        text-align: center;
+    }
+
     .stat-label {
         font-size: 0.58rem;
         margin-bottom: 0;

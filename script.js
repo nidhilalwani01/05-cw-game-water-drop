@@ -168,7 +168,24 @@ function playCueSound(cueType, badgeName = '') {
         duration = 0.8;
     }
 
-    if (text && window.speechSynthesis) {
+    // Mobile browsers may suppress speech synthesis even after unlock, so keep
+    // a guaranteed audible fallback pattern for each cue.
+    const playCueFallbackTone = () => {
+        if (cueType === 'achievement') {
+            playTone(760, 980, 0.1, 0.07, 'triangle');
+            setTimeout(() => playTone(980, 1240, 0.12, 0.065, 'triangle'), 80);
+        } else if (cueType === 'time-boost') {
+            playTone(700, 940, 0.1, 0.06, 'sine');
+            setTimeout(() => playTone(940, 1060, 0.08, 0.055, 'triangle'), 70);
+        } else if (cueType === 'bonus-rain') {
+            playTone(620, 880, 0.11, 0.065, 'sine');
+            setTimeout(() => playTone(880, 980, 0.08, 0.055, 'sine'), 75);
+        }
+    };
+
+    playCueFallbackTone();
+
+    if (text && window.speechSynthesis && soundState.speechUnlocked && soundState.speechReady) {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 1.2;
         utterance.pitch = 1.2;
