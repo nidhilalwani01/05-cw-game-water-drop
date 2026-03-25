@@ -1053,9 +1053,13 @@ function updateStreakDisplay() {
     }
 
     if (elements.scoreCard) {
-        elements.scoreCard.classList.toggle('streak-hot', streakTierOne);
-        elements.scoreCard.classList.toggle('streak-hot-2', streakTierTwo);
-        elements.scoreCard.classList.toggle('streak-hot-3', streakTierThree);
+        if (gameState.isMobileOptimized) {
+            elements.scoreCard.classList.remove('streak-hot', 'streak-hot-2', 'streak-hot-3');
+        } else {
+            elements.scoreCard.classList.toggle('streak-hot', streakTierOne);
+            elements.scoreCard.classList.toggle('streak-hot-2', streakTierTwo);
+            elements.scoreCard.classList.toggle('streak-hot-3', streakTierThree);
+        }
     }
 
     // Update game-level streak display (floating on top of game)
@@ -1296,6 +1300,10 @@ function scorePoints(drop, points) {
 
 function triggerScoreboardFlash(type) {
     if (!elements.scoreboard) {
+        return;
+    }
+
+    if (gameState.isMobileOptimized) {
         return;
     }
 
@@ -2168,14 +2176,18 @@ function updateScore() {
     elements.scoreDisplay.dataset.lastScore = String(gameState.score);
     updateImpactProgress(previousScore, gameState.score);
 
-    if (gameState.score !== previousScore) {
-        elements.scoreDisplay.classList.remove('score-pop');
-        void elements.scoreDisplay.offsetWidth;
-        elements.scoreDisplay.classList.add('score-pop');
+    const allowScoreAnimations = !gameState.isMobileOptimized;
 
-        elements.scoreCard?.classList.remove('stat-pop');
-        void elements.scoreCard?.offsetWidth;
-        elements.scoreCard?.classList.add('stat-pop');
+    if (gameState.score !== previousScore) {
+        if (allowScoreAnimations) {
+            elements.scoreDisplay.classList.remove('score-pop');
+            void elements.scoreDisplay.offsetWidth;
+            elements.scoreDisplay.classList.add('score-pop');
+
+            elements.scoreCard?.classList.remove('stat-pop');
+            void elements.scoreCard?.offsetWidth;
+            elements.scoreCard?.classList.add('stat-pop');
+        }
 
         clearTimeout(gameState.scorePulseTimeout);
         gameState.scorePulseTimeout = setTimeout(() => {
@@ -2184,9 +2196,11 @@ function updateScore() {
         }, 320);
 
         if (gameState.score > previousScore && gameState.score > 0 && gameState.score % 50 === 0) {
-            elements.goalCard?.classList.remove('stat-pop');
-            void elements.goalCard?.offsetWidth;
-            elements.goalCard?.classList.add('stat-pop');
+            if (allowScoreAnimations) {
+                elements.goalCard?.classList.remove('stat-pop');
+                void elements.goalCard?.offsetWidth;
+                elements.goalCard?.classList.add('stat-pop');
+            }
 
             clearTimeout(gameState.goalPulseTimeout);
             gameState.goalPulseTimeout = setTimeout(() => {
@@ -2234,11 +2248,15 @@ function updateImpactProgress(previousScore, currentScore) {
 function updateTimer() {
     elements.timerDisplay.textContent = gameState.timeRemaining;
 
+    const allowTimerAnimations = !gameState.isMobileOptimized;
+
     // Change color if time is running out (red warning)
     if (gameState.timeRemaining <= 10) {
         elements.timerDisplay.style.color = '#FF4444';
-        elements.timerDisplay.classList.add('timer-low-pulse');
-        elements.timerCard?.classList.add('stat-pop');
+        if (allowTimerAnimations) {
+            elements.timerDisplay.classList.add('timer-low-pulse');
+            elements.timerCard?.classList.add('stat-pop');
+        }
 
         clearTimeout(gameState.timerPulseTimeout);
         gameState.timerPulseTimeout = setTimeout(() => {
