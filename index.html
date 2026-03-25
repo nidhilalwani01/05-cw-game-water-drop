@@ -49,6 +49,7 @@
             <article class="stat-card">
                 <h2 class="stat-label">Score</h2>
                 <p id="score" class="stat-value">0</p>
+                <p id="streak-display" class="streak-display">Streak 0</p>
             </article>
 
             <article class="stat-card">
@@ -100,6 +101,10 @@
             <div id="countdown-overlay" class="countdown-overlay hidden" aria-live="assertive" aria-atomic="true">
                 <span id="countdown-number" class="countdown-number">3</span>
             </div>
+            <div id="game-streak-display" class="game-streak-display" aria-live="polite" aria-label="Current streak">
+                <p class="streak-text"></p>
+            </div>
+            <div id="magnet-countdown" class="magnet-countdown" aria-live="polite" aria-label="Magnet timer"></div>
             <div class="environment-layer" aria-hidden="true">
                 <div class="sky-layer">
                     <span class="cloud cloud-1"></span>
@@ -131,7 +136,18 @@
                 <p id="result-status" class="result-status">Round Complete</p>
                 <h2 id="game-over-title">Keep Going!</h2>
                 <p id="game-over-message">Your final score is <span id="final-score">0</span></p>
+                <p id="impact-message" class="impact-message"></p>
+                <section class="round-summary" aria-label="Round summary stats">
+                    <p class="summary-item"><span class="summary-label">Total Score</span><span id="summary-score" class="summary-value">0</span></p>
+                    <p class="summary-item"><span class="summary-label">Clean Caught</span><span id="summary-clean" class="summary-value">0</span></p>
+                    <p class="summary-item"><span class="summary-label">Polluted Avoided</span><span id="summary-polluted-avoided" class="summary-value">0</span></p>
+                    <p class="summary-item"><span class="summary-label">Best Streak</span><span id="summary-best-streak" class="summary-value">0</span></p>
+                </section>
                 <p class="result-message" id="result-message"></p>
+                <div class="modal-donation-cta" role="complementary" aria-label="Support clean water">
+                    <p class="donation-cta-text">Your game helped <span id="modal-families-count">0</span> families. Support real clean water projects.</p>
+                    <a class="btn btn-donate" href="https://www.charitywater.org/donate" target="_blank" rel="noopener noreferrer" aria-label="Donate to charity: water">Donate Now</a>
+                </div>
                 <button id="play-again-btn" class="btn btn-primary">Play Again</button>
             </div>
         </div>
@@ -144,9 +160,12 @@
             <h3>Mission: Adapt and Collect</h3>
             <p class="mission-tip"><strong>Desktop controls:</strong> Arrow keys, A/D keys, or move your mouse in the water zone.</p>
             <p class="mission-tip"><strong>Phone controls:</strong> Swipe or drag your finger in the water zone.</p>
-            <p class="legend-item"><span class="drop-icon clean material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Catch clean drops</strong> (+10) and jerry cans (+50).</p>
+            <p class="legend-item"><span class="drop-icon clean material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Catch clean drops</strong> (+10).</p>
+            <p class="legend-item"><span class="drop-icon bonus material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Collect jerry cans</strong> (+50).</p>
+            <p class="legend-item"><span class="drop-icon magnet material-symbols-rounded" aria-hidden="true">auto_awesome</span> <strong>Collect magnet power-ups</strong> to pull all non-polluted drops toward your bucket.</p>
             <p class="legend-item"><span class="drop-icon polluted material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Avoid polluted drops</strong> (-20).</p>
             <p class="legend-item"><span class="drop-icon polluted material-symbols-rounded" aria-hidden="true">bolt</span> <strong>Watch the weather</strong> and react before lightning.</p>
+            <p class="legend-item"><span class="drop-icon bonus material-symbols-rounded" aria-hidden="true">favorite</span> <strong>Build streaks</strong> (3 clean catches = x1.2 multiplier, 7 = x1.5, 12 = x2.0!). One miss breaks your streak.</p>
             <p class="goal-text">Goal: 150 points.</p>
 
             <div class="charity-callout" role="note" aria-label="Support clean water mission">

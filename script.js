@@ -11,13 +11,16 @@ let gameState = {
     isRunning: false,           // Whether the game is actively playing
     isStarting: false,          // Whether a pre-round countdown is running
     score: 0,                   // Current score
+    streak: 0,                  // Consecutive clean catches
+    bestStreak: 0,              // Highest clean catch streak this round
+    cleanCaught: 0,             // Number of clean drops caught this round
+    pollutedAvoided: 0,         // Number of polluted drops that fell past the bucket
     timeRemaining: 60,          // Seconds left to play
     targetScore: 150,           // Score needed to win (about 15 clean drops or fewer with bonuses)
     highScore: 0,               // Best score saved across rounds
     timerInterval: null,        // Store timer so we can stop it
     dropInterval: null,         // Store drop creation so we can stop it
     bucketX: 0,                 // Horizontal bucket position in px
-    bucketSpeed: 9,             // Legacy speed value retained for backwards compatibility
     bucketVelocity: 0,          // Current horizontal velocity for smooth movement
     bucketSteer: 0,             // Smoothed steering value so turns feel less abrupt
     bucketAcceleration: 1.1,    // Keyboard acceleration applied each frame
@@ -55,6 +58,9 @@ let gameState = {
     lightningWarningStep: 0,    // Current warning beat before lightning lands
     progressCelebrated: false,  // Whether full progress celebration has already played this round
     impactCelebrateTimeout: null, // Timeout for progress celebration class cleanup
+    magnetActiveUntil: 0,       // Timestamp until the bucket magnet pull is active
+    magnetTimeout: null,        // Timeout handle for magnet visual cleanup
+    magnetWarningTimeout: null, // Timeout handle for warning before magnet expires
 };
 
 // Load the saved high score once when the script starts.
@@ -66,6 +72,9 @@ gameState.highScore = Number(localStorage.getItem('drop-for-change-high-score'))
 
 const elements = {
     scoreDisplay: document.getElementById('score'),
+    streakDisplay: document.getElementById('streak-display'),
+    gameStreakDisplay: document.getElementById('game-streak-display'),
+    magnetCountdown: document.getElementById('magnet-countdown'),
     timerDisplay: document.getElementById('time'),
     gameContainer: document.getElementById('game-container'),
     startBtn: document.getElementById('start-btn'),
@@ -73,8 +82,14 @@ const elements = {
     gameOverModal: document.getElementById('game-over-modal'),
     gameOverTitle: document.getElementById('game-over-title'),
     gameOverMessage: document.getElementById('game-over-message'),
+    impactMessage: document.getElementById('impact-message'),
+    modalFamiliesCount: document.getElementById('modal-families-count'),
     resultMessage: document.getElementById('result-message'),
     finalScore: document.getElementById('final-score'),
+    summaryScore: document.getElementById('summary-score'),
+    summaryClean: document.getElementById('summary-clean'),
+    summaryPollutedAvoided: document.getElementById('summary-polluted-avoided'),
+    summaryBestStreak: document.getElementById('summary-best-streak'),
     playAgainBtn: document.getElementById('play-again-btn'),
     confettiCanvas: document.getElementById('confetti-canvas'),
     themeToggle: document.getElementById('theme-toggle'),
@@ -187,6 +202,17 @@ const inputState = {
 const soundState = {
     enabled: true,
     audioContext: null,
+};
+
+const MAGNET_SPAWN_CHANCE = 0.04;
+const MAGNET_DURATION_MS = 6500;
+const MAGNET_PULL_RADIUS_PX = 920;
+const MAGNET_WARNING_LEAD_MS = 700;
+
+const STREAK_MULTIPLIERS = {
+    medium: 1.2,
+    high: 1.5,
+    max: 2.0,
 };
 
 // ==========================================
@@ -558,14 +584,29 @@ function beginRoundStartSequence() {
 function startActiveRound() {
     gameState.isRunning = true;
     gameState.score = 0;
+    gameState.streak = 0;
+    gameState.bestStreak = 0;
+    gameState.cleanCaught = 0;
+    gameState.pollutedAvoided = 0;
     gameState.timeRemaining = 60;
     gameState.stormCycleIndex = 0;
     gameState.stormPatternTipShown = false;
     gameState.lightningWarningStep = 0;
     gameState.progressCelebrated = false;
+    gameState.magnetActiveUntil = 0;
+    clearTimeout(gameState.magnetTimeout);
+    clearTimeout(gameState.magnetWarningTimeout);
+    gameState.magnetTimeout = null;
+    gameState.magnetWarningTimeout = null;
+    elements.bucket.classList.remove('bucket-magnet-active');
+    updateMagnetCountdownDisplay();
 
     // Update UI to reflect game status.
     updateScore();
+    updateStreakDisplay();
+    if (elements.gameStreakDisplay) {
+        elements.gameStreakDisplay.style.display = 'block';
+    }
     updateTimer();
     getAudioContext();
     playSoundEffect('start');
@@ -620,6 +661,10 @@ function resetGame() {
 
     // Reset state
     gameState.score = 0;
+    gameState.streak = 0;
+    gameState.bestStreak = 0;
+    gameState.cleanCaught = 0;
+    gameState.pollutedAvoided = 0;
     gameState.timeRemaining = 60;
     gameState.bucketVelocity = 0;
     gameState.bucketSteer = 0;
@@ -630,6 +675,7 @@ function resetGame() {
     gameState.stormPatternTipShown = false;
     gameState.lightningWarningStep = 0;
     gameState.progressCelebrated = false;
+    gameState.magnetActiveUntil = 0;
     inputState.leftPressed = false;
     inputState.rightPressed = false;
 
@@ -651,6 +697,8 @@ function resetGame() {
     clearTimeout(gameState.scoreboardFlashTimeout);
     clearTimeout(gameState.lightningShakeTimeout);
     clearTimeout(gameState.impactCelebrateTimeout);
+    clearTimeout(gameState.magnetTimeout);
+    clearTimeout(gameState.magnetWarningTimeout);
     gameState.bucketCatchGlowTimeout = null;
     gameState.bucketShakeTimeout = null;
     gameState.gameMomentTimeout = null;
@@ -661,12 +709,15 @@ function resetGame() {
     gameState.scoreboardFlashTimeout = null;
     gameState.lightningShakeTimeout = null;
     gameState.impactCelebrateTimeout = null;
+    gameState.magnetTimeout = null;
+    gameState.magnetWarningTimeout = null;
 
     elements.gameContainer.classList.remove('bonus-moment');
     elements.gameContainer.classList.remove('storm-moment');
     elements.gameContainer.classList.remove('negative-flash');
     elements.gameContainer.classList.remove('lightning-warning-dim');
     elements.bucket.classList.remove('bucket-bonus-boost');
+    elements.bucket.classList.remove('bucket-magnet-active');
     elements.scoreDisplay.classList.remove('score-pop');
     elements.timerDisplay.classList.remove('timer-low-pulse');
     elements.scoreCard?.classList.remove('stat-pop');
@@ -688,6 +739,8 @@ function resetGame() {
 
     // Update all displays
     updateScore();
+    updateStreakDisplay();
+    updateMagnetCountdownDisplay();
     updateTimer();
     ensureBucketPosition();
 
@@ -720,21 +773,50 @@ function tick() {
 function endGame() {
     gameState.isRunning = false;
 
+    // Hide game-level streak display
+    if (elements.gameStreakDisplay) {
+        elements.gameStreakDisplay.style.display = 'none';
+    }
+
     // Stop creating new drops
     clearInterval(gameState.dropInterval);
     clearInterval(gameState.timerInterval);
     stopStormSystem();
+    clearTimeout(gameState.magnetTimeout);
+    clearTimeout(gameState.magnetWarningTimeout);
+    gameState.magnetTimeout = null;
+    gameState.magnetWarningTimeout = null;
+    gameState.magnetActiveUntil = 0;
+    elements.bucket.classList.remove('bucket-magnet-active');
+    clearMagnetOffsets();
+    updateMagnetCountdownDisplay();
 
     // Disable start button
     elements.startBtn.disabled = true;
 
     // Display results
     elements.finalScore.textContent = gameState.score;
+    elements.summaryScore.textContent = String(gameState.score);
+    elements.summaryClean.textContent = String(gameState.cleanCaught);
+    elements.summaryPollutedAvoided.textContent = String(gameState.pollutedAvoided);
+    elements.summaryBestStreak.textContent = String(gameState.bestStreak);
 
     // Calculate impact from total score.
     const familiesHelped = Math.floor(gameState.score / gameState.targetScore);
     const pointsToNextFamily = gameState.targetScore - (gameState.score % gameState.targetScore);
     const isNewHighScore = gameState.score > gameState.highScore;
+
+    if (familiesHelped > 0) {
+        const familyLabel = familiesHelped === 1 ? 'family' : 'families';
+        elements.impactMessage.textContent = `You helped provide water to ${familiesHelped} ${familyLabel}.`;
+    } else {
+        elements.impactMessage.textContent = `Keep going. Reach ${gameState.targetScore} points to support your first family.`;
+    }
+
+    // Update the modal donation CTA with families count
+    if (elements.modalFamiliesCount) {
+        elements.modalFamiliesCount.textContent = String(familiesHelped > 0 ? familiesHelped : '0');
+    }
 
     if (isNewHighScore) {
         gameState.highScore = gameState.score;
@@ -751,10 +833,10 @@ function endGame() {
         elements.resultStatus.textContent = 'Mission Success';
         elements.modalContent?.classList.remove('result-failure');
         elements.modalContent?.classList.add('result-success');
-        elements.gameOverTitle.textContent = 'Success: Clean Water Delivered';
+        elements.gameOverTitle.textContent = 'Clean Water Delivered';
         elements.gameOverTitle.style.color = '#FFC907';
         elements.resultMessage.textContent =
-            `You caught clean water, avoided polluted drops, and brought water closer for ${familiesHelped} ${familyLabel}.${highScoreMessage}`;
+            `Strong round. You delivered progress for ${familiesHelped} ${familyLabel}.${highScoreMessage}`;
         setActionFeedback(`Mission success. Final score: ${gameState.score}.`, 'positive');
         playSoundEffect('win');
         playConfetti();
@@ -769,13 +851,15 @@ function endGame() {
         elements.gameOverTitle.textContent = 'Mission Incomplete';
         elements.gameOverTitle.style.color = '#FF902A';
         elements.resultMessage.textContent =
-            `You are ${targetHint} points away from helping your first family. Catch clean drops, avoid polluted drops, and adjust to changing weather. High score: ${gameState.highScore}.`;
+            `${targetHint} points to go for mission success. Stay on clean-drop streaks and avoid polluted drops. High score: ${gameState.highScore}.`;
         setActionFeedback(`Round ended. You need ${targetHint} more points for success.`, 'negative');
         playSoundEffect('lose');
     }
 
-    // Show the modal
-    elements.gameOverModal.classList.remove('hidden');
+    // Show the modal with a small delay to ensure smooth animation
+    requestAnimationFrame(() => {
+        elements.gameOverModal.classList.remove('hidden');
+    });
 }
 
 // ==========================================
@@ -803,7 +887,11 @@ function createDrop() {
     let points;
     let size;
 
-    if (rand < cleanChance) {
+    if (Math.random() < MAGNET_SPAWN_CHANCE) {
+        dropType = 'powerup-magnet';
+        points = 0;
+        size = 46 + Math.random() * 10;
+    } else if (rand < cleanChance) {
         // Clean water drop (mode-adjusted chance)
         dropType = 'clean';
         points = 10;
@@ -822,11 +910,16 @@ function createDrop() {
 
     // Store points value on the element
     drop.dataset.points = points;
+    drop.dataset.type = dropType;
 
     // Set drop appearance
     drop.classList.add(dropType);
     drop.classList.add('material-symbols-rounded');
-    drop.textContent = 'water_drop';
+    if (dropType === 'powerup-magnet') {
+        drop.textContent = 'auto_awesome';
+    } else {
+        drop.textContent = 'water_drop';
+    }
     drop.style.width = size + 'px';
     drop.style.height = size + 'px';
     drop.style.fontSize = Math.round(size * 0.92) + 'px';
@@ -840,16 +933,182 @@ function createDrop() {
     const fallRange = Math.max(0, preset.dropFallMaxSec - preset.dropFallMinSec);
     const fallSpeed = preset.dropFallMinSec + Math.random() * fallRange;
     drop.style.setProperty('--fall-duration', `${fallSpeed}s`);
-    drop.style.setProperty('--drop-tilt', `${(Math.random() * 16 - 8).toFixed(2)}deg`);
+    const dropTilt = dropType === 'powerup-magnet'
+        ? '0deg'
+        : `${(Math.random() * 16 - 8).toFixed(2)}deg`;
+    drop.style.setProperty('--drop-tilt', dropTilt);
     drop.style.setProperty('--drop-sway', `${(Math.random() * 8 + 5).toFixed(2)}px`);
+    drop.style.setProperty('--magnet-offset-x', '0px');
+    drop.style.setProperty('--magnet-offset-y', '0px');
+    drop.dataset.magnetOffsetX = '0';
+    drop.dataset.magnetOffsetY = '0';
 
     // Add the drop to the game area
     elements.gameContainer.appendChild(drop);
 
     // Remove drop after it falls off screen (animation ends)
     drop.addEventListener('animationend', () => {
+        if (gameState.isRunning && !drop.classList.contains('collected')) {
+            if (!drop.classList.contains('polluted')) {
+                resetStreak();
+            }
+
+            if (drop.classList.contains('polluted')) {
+                gameState.pollutedAvoided += 1;
+            }
+        }
+
         drop.remove();
     });
+}
+
+function getStreakMultiplier(streakCount) {
+    if (streakCount >= 12) {
+        return STREAK_MULTIPLIERS.max;
+    }
+
+    if (streakCount >= 7) {
+        return STREAK_MULTIPLIERS.high;
+    }
+
+    if (streakCount >= 3) {
+        return STREAK_MULTIPLIERS.medium;
+    }
+
+    return 1;
+}
+
+function updateStreakDisplay() {
+    if (!elements.streakDisplay) {
+        return;
+    }
+
+    const multiplier = getStreakMultiplier(gameState.streak);
+    const streakTierOne = gameState.streak >= 3;
+    const streakTierTwo = gameState.streak >= 7;
+    const streakTierThree = gameState.streak >= 12;
+
+    if (gameState.streak === 0) {
+        elements.streakDisplay.textContent = 'Streak 0';
+    } else if (gameState.streak < 3) {
+        elements.streakDisplay.textContent = `Streak ${gameState.streak} - 3 catches for bonus`;
+    } else {
+        elements.streakDisplay.textContent = `Streak ${gameState.streak} x${multiplier.toFixed(1)} active - do not miss`;
+    }
+
+    elements.streakDisplay.classList.toggle('streak-active', gameState.streak >= 3);
+    elements.streakDisplay.classList.toggle('streak-warning', gameState.streak >= 3);
+
+    if (elements.scoreCard) {
+        elements.scoreCard.classList.toggle('streak-hot', streakTierOne);
+        elements.scoreCard.classList.toggle('streak-hot-2', streakTierTwo);
+        elements.scoreCard.classList.toggle('streak-hot-3', streakTierThree);
+    }
+
+    // Update game-level streak display (floating on top of game)
+    if (elements.gameStreakDisplay) {
+        const streakTextEl = elements.gameStreakDisplay.querySelector('.streak-text');
+        if (streakTextEl) {
+            if (gameState.streak === 0) {
+                streakTextEl.textContent = '';
+            } else {
+                const mult = multiplier.toFixed(1);
+                streakTextEl.textContent = `Streak ${gameState.streak} x${mult}`;
+            }
+            // Add pulse animation when streak increases (non-zero streak catching)
+            if (gameState.streak > 0) {
+                streakTextEl.classList.remove('streak-pulse');
+                // Trigger reflow to restart animation
+                void streakTextEl.offsetWidth;
+                streakTextEl.classList.add('streak-pulse');
+            }
+        }
+    }
+}
+
+function resetStreak() {
+    if (gameState.streak === 0) {
+        return;
+    }
+
+    gameState.streak = 0;
+    updateStreakDisplay();
+}
+
+function activateMagnetPowerUp(durationMs = MAGNET_DURATION_MS) {
+    const nextEnd = performance.now() + durationMs;
+    gameState.magnetActiveUntil = Math.max(gameState.magnetActiveUntil, nextEnd);
+    const remainingMs = Math.max(0, gameState.magnetActiveUntil - performance.now());
+
+    elements.bucket.classList.add('bucket-magnet-active');
+
+    clearTimeout(gameState.magnetTimeout);
+    clearTimeout(gameState.magnetWarningTimeout);
+
+    if (remainingMs > MAGNET_WARNING_LEAD_MS) {
+        gameState.magnetWarningTimeout = setTimeout(() => {
+            if (!gameState.isRunning || performance.now() >= gameState.magnetActiveUntil) {
+                return;
+            }
+
+            showFeedbackMessage('Magnet fading soon. Pull in drops now.', 'bonus', 1200);
+            setActionFeedback('Magnet effect ending soon.', 'alert', 900);
+        }, remainingMs - MAGNET_WARNING_LEAD_MS);
+    }
+
+    gameState.magnetTimeout = setTimeout(() => {
+        if (performance.now() < gameState.magnetActiveUntil) {
+            return;
+        }
+
+        elements.bucket.classList.remove('bucket-magnet-active');
+        clearMagnetOffsets();
+    }, remainingMs + 20);
+}
+
+function clearMagnetOffsets() {
+    const magneticDrops = document.querySelectorAll('.drop:not(.polluted)');
+
+    magneticDrops.forEach((drop) => {
+        drop.dataset.magnetOffsetX = '0';
+        drop.dataset.magnetOffsetY = '0';
+        drop.style.setProperty('--magnet-offset-x', '0px');
+        drop.style.setProperty('--magnet-offset-y', '0px');
+    });
+}
+
+function updateMagnetCountdownDisplay() {
+    if (!elements.magnetCountdown) {
+        return;
+    }
+
+    const remainingMs = gameState.magnetActiveUntil - performance.now();
+    const magnetIsActive = gameState.isRunning && remainingMs > 0;
+
+    if (!magnetIsActive) {
+        elements.magnetCountdown.textContent = '';
+        elements.magnetCountdown.classList.remove('magnet-active', 'magnet-ending');
+        return;
+    }
+
+    const secondsRemaining = Math.max(0, remainingMs / 1000);
+    let countdownText = '';
+    
+    if (secondsRemaining > 3) {
+        countdownText = `Magnet Active`;
+    } else if (secondsRemaining > 2) {
+        countdownText = 'OFF in 3';
+    } else if (secondsRemaining > 1) {
+        countdownText = 'OFF in 2';
+    } else if (secondsRemaining > 0) {
+        countdownText = 'OFF in 1';
+    } else {
+        countdownText = 'Magnet Ended';
+    }
+    
+    elements.magnetCountdown.textContent = countdownText;
+    elements.magnetCountdown.classList.add('magnet-active');
+    elements.magnetCountdown.classList.toggle('magnet-ending', secondsRemaining <= 3);
 }
 
 // ==========================================
@@ -869,33 +1128,58 @@ function scorePoints(drop, points) {
 
     drop.classList.add('collected');
 
+    const isClean = drop.classList.contains('clean');
+    const isPolluted = drop.classList.contains('polluted');
+    const isBonus = drop.classList.contains('bonus');
+    const isMagnetPowerUp = drop.classList.contains('powerup-magnet');
+
+    let awardedPoints = points;
+
+    if (isClean) {
+        gameState.cleanCaught += 1;
+        gameState.streak += 1;
+        gameState.bestStreak = Math.max(gameState.bestStreak, gameState.streak);
+        awardedPoints = Math.round(points * getStreakMultiplier(gameState.streak));
+    } else if (isPolluted) {
+        resetStreak();
+    } else if (isMagnetPowerUp) {
+        activateMagnetPowerUp();
+    }
+
     // Update score (never go below 0)
-    gameState.score += points;
+    gameState.score += awardedPoints;
     if (gameState.score < 0) {
         gameState.score = 0;
     }
     
     updateScore();
+    updateStreakDisplay();
 
     let dropType = 'clean';
 
-    if (drop.classList.contains('bonus')) {
+    if (isBonus) {
         dropType = 'bonus';
-    } else if (drop.classList.contains('polluted')) {
+    } else if (isPolluted) {
         dropType = 'polluted';
+    } else if (isMagnetPowerUp) {
+        dropType = 'powerup-magnet';
     }
 
-    if (points > 0) {
+    if (awardedPoints > 0 || isMagnetPowerUp) {
         triggerBucketCatchGlow(dropType);
     }
 
-    const isPositive = points > 0;
-    triggerScoreboardFlash(isPositive ? 'positive' : 'negative');
+    if (awardedPoints !== 0) {
+        const isPositive = awardedPoints > 0;
+        triggerScoreboardFlash(isPositive ? 'positive' : 'negative');
+    }
 
     if (dropType === 'polluted') {
         playSoundEffect('polluted');
         triggerNegativeFlash();
     } else if (dropType === 'bonus') {
+        playSoundEffect('bonus');
+    } else if (dropType === 'powerup-magnet') {
         playSoundEffect('bonus');
     } else {
         playSoundEffect('clean');
@@ -907,24 +1191,46 @@ function scorePoints(drop, points) {
         message = 'Clean catch! Keep bringing safe water closer.';
     } else if (drop.classList.contains('polluted')) {
         message = 'Polluted drop! Adjust and recover.';
+    } else if (drop.classList.contains('powerup-magnet')) {
+        message = 'Magnet active! Nearby clean drops are pulled in.';
     } else if (drop.classList.contains('bonus')) {
         message = 'Bonus can! Big boost for clean water access.';
+    }
+
+    if (isClean && [3, 7, 12].includes(gameState.streak)) {
+        const streakMultiplier = getStreakMultiplier(gameState.streak);
+        showFeedbackMessage(`Streak boost: x${streakMultiplier.toFixed(1)}`, 'clean', 1200);
     }
 
     if (dropType === 'bonus') {
         triggerGameMoment('bonus', 420);
         triggerHaptic([20, 35, 45]);
+    } else if (dropType === 'powerup-magnet') {
+        triggerGameMoment('bonus', 360);
+        triggerHaptic([18, 40, 18]);
     } else if (dropType === 'polluted') {
         triggerHaptic([25]);
     } else {
         triggerHaptic([15]);
     }
     
-    // Use top toast feedback for catches.
-    showFeedbackMessage(message, dropType, 1700);
-    showPointsFeedback(drop, points, dropType);
-    triggerCatchBurst(drop, dropType);
-    triggerCatchParticles(drop, dropType);
+    // Use top toast feedback for catches - skip for clean drops since streak shows that.
+    const feedbackType = dropType === 'powerup-magnet' ? 'bonus' : dropType;
+    const activeMultiplier = isClean ? getStreakMultiplier(gameState.streak) : 1;
+    const visualType = dropType === 'powerup-magnet' ? 'bonus' : dropType;
+    
+    // Only show toast message for non-clean drops (polluted, bonus, magnet), clean catches are shown via streak
+    if (!isClean) {
+        showFeedbackMessage(message, feedbackType, 1700);
+    }
+    
+    // Show points feedback (popups) for all drops
+    if (!isMagnetPowerUp) {
+        showPointsFeedback(drop, awardedPoints, visualType, activeMultiplier);
+    }
+
+    triggerCatchBurst(drop, visualType);
+    triggerCatchParticles(drop, visualType);
 
     // Remove the clicked drop
     drop.style.animation = 'none'; // Stop falling animation
@@ -960,6 +1266,8 @@ function triggerBucketCatchGlow(type = 'clean') {
 
     if (type === 'bonus') {
         elements.bucket.classList.add('bucket-bonus-boost');
+    } else if (type === 'powerup-magnet') {
+        elements.bucket.classList.add('bucket-magnet-active');
     }
 
     clearTimeout(gameState.bucketCatchGlowTimeout);
@@ -1037,13 +1345,16 @@ function triggerHaptic(pattern) {
 /**
  * Shows floating text feedback when points are scored
  */
-function showPointsFeedback(drop, points, type = 'clean') {
+function showPointsFeedback(drop, points, type = 'clean', multiplier = 1) {
     const containerRect = elements.gameContainer.getBoundingClientRect();
     const dropRect = drop.getBoundingClientRect();
 
+    // Add random horizontal spread to prevent popups from stacking
+    const horizontalOffset = (Math.random() - 0.5) * 60; // ±30px spread
+
     const feedback = document.createElement('div');
     feedback.style.position = 'absolute';
-    feedback.style.left = `${dropRect.left - containerRect.left + (dropRect.width / 2)}px`;
+    feedback.style.left = `${dropRect.left - containerRect.left + (dropRect.width / 2) + horizontalOffset}px`;
     feedback.style.top = `${dropRect.top - containerRect.top}px`;
     feedback.style.fontSize = type === 'bonus' ? '28px' : '24px';
     feedback.style.fontWeight = 'bold';
@@ -1052,6 +1363,10 @@ function showPointsFeedback(drop, points, type = 'clean') {
         ? 'popUpBonus 1s ease-out forwards'
         : (type === 'polluted' ? 'popUpNegative 1s ease-out forwards' : 'popUp 1s ease-out forwards');
     feedback.textContent = (points > 0 ? '+' : '') + points;
+
+    if (type === 'clean' && multiplier > 1) {
+        feedback.textContent += ` x${multiplier.toFixed(1)}`;
+    }
     feedback.style.color = type === 'bonus' ? '#FFC907' : (type === 'polluted' ? '#9A907E' : '#2E9DF7');
     feedback.style.textShadow = type === 'bonus'
         ? '0 0 14px rgba(255, 201, 7, 0.85), 2px 2px 4px rgba(0,0,0,0.3)'
@@ -1599,10 +1914,64 @@ function checkDropCollisions() {
     });
 }
 
+function applyMagnetPull() {
+    if (!gameState.isRunning || performance.now() >= gameState.magnetActiveUntil) {
+        return;
+    }
+
+    const bucketRect = elements.bucket.getBoundingClientRect();
+    const bucketCenterX = bucketRect.left + (bucketRect.width / 2);
+    const bucketCenterY = bucketRect.top + (bucketRect.height / 2);
+    const magneticDrops = document.querySelectorAll('.drop:not(.polluted):not(.collected)');
+
+    magneticDrops.forEach((drop) => {
+        const dropRect = drop.getBoundingClientRect();
+        const dropCenterX = dropRect.left + (dropRect.width / 2);
+        const dropCenterY = dropRect.top + (dropRect.height / 2);
+        const deltaX = bucketCenterX - dropCenterX;
+        const deltaY = bucketCenterY - dropCenterY;
+        const distance = Math.hypot(deltaX, deltaY);
+        const isBonusDrop = drop.classList.contains('bonus');
+        const pullRadius = isBonusDrop ? MAGNET_PULL_RADIUS_PX + 90 : MAGNET_PULL_RADIUS_PX;
+
+        let offsetX = Number(drop.dataset.magnetOffsetX || 0);
+        let offsetY = Number(drop.dataset.magnetOffsetY || 0);
+
+        if (distance <= pullRadius && distance > 0.01) {
+            const normalizedDistance = 1 - (distance / pullRadius);
+            const basePullStrength = (normalizedDistance * 6.8) + 1.6;
+            const pullStrength = isBonusDrop ? basePullStrength * 2.4 : basePullStrength;
+            const directionX = deltaX / distance;
+            const directionY = deltaY / distance;
+
+            offsetX += directionX * pullStrength;
+            offsetY += directionY * pullStrength;
+        } else {
+            // Smoothly decay offsets when magnet is off, but decay faster to prevent dragging
+            offsetX *= 0.8;
+            offsetY *= 0.8;
+        }
+
+        const maxOffsetX = isBonusDrop ? 500 : 420;
+        const maxOffsetYUp = isBonusDrop ? 380 : 340;
+        const maxOffsetYDown = isBonusDrop ? 700 : 580;
+        const clampedOffsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, offsetX));
+        const clampedOffsetY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, offsetY));
+        drop.dataset.magnetOffsetX = String(clampedOffsetX);
+        drop.dataset.magnetOffsetY = String(clampedOffsetY);
+        drop.style.setProperty('--magnet-offset-x', `${clampedOffsetX.toFixed(2)}px`);
+        drop.style.setProperty('--magnet-offset-y', `${clampedOffsetY.toFixed(2)}px`);
+    });
+}
+
 function gameLoop() {
     if (gameState.isRunning) {
+        updateMagnetCountdownDisplay();
         updateBucketMovement();
+        applyMagnetPull();
         checkDropCollisions();
+    } else {
+        updateMagnetCountdownDisplay();
     }
 
     requestAnimationFrame(gameLoop);
