@@ -293,7 +293,38 @@ const inputState = {
 const soundState = {
     enabled: true,
     audioContext: null,
+    speechUnlocked: false,
+    speechReady: false,
 };
+
+function unlockSpeechSynthesis() {
+    if (!window.speechSynthesis) {
+        return;
+    }
+
+    soundState.speechUnlocked = true;
+
+    try {
+        window.speechSynthesis.getVoices();
+        const warmup = new SpeechSynthesisUtterance(' ');
+        warmup.volume = 0;
+        warmup.rate = 1;
+        warmup.pitch = 1;
+        warmup.onend = () => {
+            soundState.speechReady = true;
+        };
+        warmup.onerror = () => {
+            soundState.speechReady = true;
+        };
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(warmup);
+        setTimeout(() => {
+            soundState.speechReady = true;
+        }, 250);
+    } catch (_) {
+        soundState.speechReady = true;
+    }
+}
 
 const MAGNET_SPAWN_CHANCE = 0.04;
 const MAGNET_DURATION_MS = 6500;
@@ -458,6 +489,10 @@ function playTone(startFrequency, endFrequency, durationSec = 0.1, volume = 0.04
         return;
     }
 
+    if (!soundState.speechUnlocked || !soundState.speechReady) {
+        return;
+    }
+
     const audioContext = getAudioContext();
     if (!audioContext) {
         return;
@@ -544,6 +579,7 @@ function initializeSoundSystem() {
 
     if (elements.soundToggle) {
         elements.soundToggle.addEventListener('click', () => {
+            unlockSpeechSynthesis();
             soundState.enabled = !soundState.enabled;
 
             if (soundState.enabled) {
@@ -556,6 +592,7 @@ function initializeSoundSystem() {
     }
 
     const unlockAudio = () => {
+        unlockSpeechSynthesis();
         const audioContext = getAudioContext();
         if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume().catch(() => {
@@ -573,6 +610,7 @@ function initializeSoundSystem() {
     window.addEventListener('touchstart', unlockAudio, { passive: true });
 
     elements.startBtn?.addEventListener('click', () => {
+        unlockSpeechSynthesis();
         const audioContext = getAudioContext();
         if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume().catch(() => {
