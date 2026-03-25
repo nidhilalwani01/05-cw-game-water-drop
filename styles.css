@@ -2985,6 +2985,10 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
         padding: 8px 8px;
     }
 
+    #game-container {
+        border: none;
+    }
+
     .game-wrapper {
         border-radius: 14px;
         padding: 10px;
@@ -3179,8 +3183,17 @@ body.mobile-optimized .scoreboard .stat-card:first-child.streak-hot-3 {
         bottom: 34px;
     }
 
+    .horizon-blend {
+        bottom: 54px;
+    }
+
+    .horizon-blend::after {
+        display: none;
+    }
+
     .grass-strip {
         height: 54px;
+        border-top: none;
     }
 
     .lightning-bolt {
