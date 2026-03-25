@@ -61,6 +61,11 @@ let gameState = {
     magnetActiveUntil: 0,       // Timestamp until the bucket magnet pull is active
     magnetTimeout: null,        // Timeout handle for magnet visual cleanup
     magnetWarningTimeout: null, // Timeout handle for warning before magnet expires
+    isMobileOptimized: false,   // Whether lightweight mobile rendering/perf mode is active
+    collisionFrameIntervalMs: 16, // Minimum spacing between collision checks
+    magnetFrameIntervalMs: 16,  // Minimum spacing between magnet pull updates
+    lastCollisionCheckAt: 0,    // Timestamp of the most recent collision check
+    lastMagnetPullCheckAt: 0,   // Timestamp of the most recent magnet pull update
 };
 
 // Load the saved high score once when the script starts.
@@ -456,10 +461,35 @@ initializeThemeToggle();
 initializeSoundSystem();
 initializeWeatherModeControl();
 initializeBucketControls();
+applyDevicePerformanceProfile();
 initializeAmbientParallax();
 requestAnimationFrame(gameLoop);
 
+function shouldUseMobileOptimization() {
+    const usesCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    return usesCoarsePointer || window.innerWidth <= 820;
+}
+
+function applyDevicePerformanceProfile() {
+    gameState.isMobileOptimized = shouldUseMobileOptimization();
+    document.body.classList.toggle('mobile-optimized', gameState.isMobileOptimized);
+
+    if (gameState.isMobileOptimized) {
+        gameState.collisionFrameIntervalMs = 34;
+        gameState.magnetFrameIntervalMs = 50;
+    } else {
+        gameState.collisionFrameIntervalMs = 16;
+        gameState.magnetFrameIntervalMs = 16;
+    }
+}
+
 function initializeAmbientParallax() {
+    if (gameState.isMobileOptimized || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.style.setProperty('--ambient-parallax-x', '0px');
+        document.documentElement.style.setProperty('--ambient-parallax-y', '0px');
+        return;
+    }
+
     let ticking = false;
     let lastParallaxY = null;
     let lastParallaxX = null;
@@ -874,6 +904,13 @@ function createDrop() {
     // Don't create drops if game isn't running
     if (!gameState.isRunning) return;
 
+    const activeDropCount = elements.gameContainer.querySelectorAll('.drop').length;
+    const maxActiveDrops = gameState.isMobileOptimized ? 16 : 30;
+
+    if (activeDropCount >= maxActiveDrops) {
+        return;
+    }
+
     const drop = document.createElement('div');
     drop.className = 'drop';
 
@@ -906,6 +943,10 @@ function createDrop() {
         dropType = 'bonus';
         points = 50;
         size = 66 + Math.random() * 16; // 66-82px
+    }
+
+    if (gameState.isMobileOptimized) {
+        size *= 0.88;
     }
 
     // Store points value on the element
@@ -1805,19 +1846,31 @@ function triggerBucketStormShake() {
 function startRainParticles() {
     clearInterval(gameState.stormRainInterval);
     const preset = getActiveWeatherPreset();
+    const rainBurstCount = gameState.isMobileOptimized
+        ? Math.max(3, Math.floor(preset.rainBurstCount * 0.45))
+        : preset.rainBurstCount;
+    const rainSpawnIntervalMs = gameState.isMobileOptimized
+        ? Math.round(preset.rainSpawnIntervalMs * 1.55)
+        : preset.rainSpawnIntervalMs;
+    const maxRainDrops = gameState.isMobileOptimized ? 42 : 120;
 
     const spawnBatch = () => {
         if (!gameState.stormActive || !elements.rainLayer) {
             return;
         }
 
-        for (let i = 0; i < preset.rainBurstCount; i++) {
+        if (elements.rainLayer.childElementCount >= maxRainDrops) {
+            return;
+        }
+
+        for (let i = 0; i < rainBurstCount; i++) {
             const rainDrop = document.createElement('span');
             rainDrop.className = 'rain-drop';
             rainDrop.style.left = `${Math.random() * 100}%`;
 
             const durationRange = Math.max(0, preset.rainDurationMax - preset.rainDurationMin);
-            const duration = preset.rainDurationMin + Math.random() * durationRange;
+            const durationScale = gameState.isMobileOptimized ? 1.2 : 1;
+            const duration = (preset.rainDurationMin + Math.random() * durationRange) * durationScale;
             rainDrop.style.animationDuration = `${duration}s`;
             const opacityRange = Math.max(0, preset.rainOpacityMax - preset.rainOpacityMin);
             rainDrop.style.opacity = `${preset.rainOpacityMin + Math.random() * opacityRange}`;
@@ -1831,7 +1884,7 @@ function startRainParticles() {
     };
 
     spawnBatch();
-    gameState.stormRainInterval = setInterval(spawnBatch, preset.rainSpawnIntervalMs);
+    gameState.stormRainInterval = setInterval(spawnBatch, rainSpawnIntervalMs);
 }
 
 function clearRainParticles() {
@@ -1964,12 +2017,20 @@ function applyMagnetPull() {
     });
 }
 
-function gameLoop() {
+function gameLoop(timestamp = performance.now()) {
     if (gameState.isRunning) {
         updateMagnetCountdownDisplay();
         updateBucketMovement();
-        applyMagnetPull();
-        checkDropCollisions();
+
+        if ((timestamp - gameState.lastMagnetPullCheckAt) >= gameState.magnetFrameIntervalMs) {
+            applyMagnetPull();
+            gameState.lastMagnetPullCheckAt = timestamp;
+        }
+
+        if ((timestamp - gameState.lastCollisionCheckAt) >= gameState.collisionFrameIntervalMs) {
+            checkDropCollisions();
+            gameState.lastCollisionCheckAt = timestamp;
+        }
     } else {
         updateMagnetCountdownDisplay();
     }
@@ -2264,6 +2325,7 @@ function drawConfetti(ctx, particle) {
 
 // Update confetti canvas size on window resize
 window.addEventListener('resize', () => {
+    applyDevicePerformanceProfile();
     updateBucketTuning();
 
     if (elements.confettiCanvas.style.display !== 'none') {

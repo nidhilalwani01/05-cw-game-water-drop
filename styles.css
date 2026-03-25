@@ -2923,6 +2923,43 @@ body[data-theme="dark"] .donation-cta-text span {
     color: #7dd4ff;
 }
 
+body.mobile-optimized::before {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(228, 241, 250, 0.34);
+}
+
+body.mobile-optimized .ambient-water-bg::before,
+body.mobile-optimized .ambient-water-bg::after {
+    animation: none;
+    opacity: 0.14;
+}
+
+body.mobile-optimized .ambient-blob {
+    animation: none;
+    filter: blur(16px);
+    opacity: 0.46;
+}
+
+body.mobile-optimized .ambient-blob-5,
+body.mobile-optimized .ambient-blob-6,
+body.mobile-optimized .ambient-blob-7,
+body.mobile-optimized .ambient-blob-8,
+body.mobile-optimized .ambient-blob-9,
+body.mobile-optimized .ambient-blob-10 {
+    display: none;
+}
+
+body.mobile-optimized .cloud,
+body.mobile-optimized .storm-cloud {
+    filter: none;
+}
+
+body.mobile-optimized .cloud-5,
+body.mobile-optimized .storm-cloud-3 {
+    display: none;
+}
+
 /* ==========================================
    RESPONSIVE ADJUSTMENTS
    ========================================== */
@@ -2981,16 +3018,20 @@ body[data-theme="dark"] .donation-cta-text span {
     }
 
     .header-top-row {
-        align-items: center;
+        align-items: flex-start;
+        flex-wrap: wrap;
         gap: 8px;
         padding: 4px 2px;
     }
 
     .header-actions {
+        width: 100%;
+        justify-content: space-between;
         gap: 6px;
     }
 
     .theme-label {
+        width: 100%;
         font-size: 0.68rem;
     }
 
@@ -3084,14 +3125,19 @@ body[data-theme="dark"] .donation-cta-text span {
     }
 
     #game-container {
-        height: 320px;
+        min-height: 280px;
+        height: min(56vh, 320px);
     }
 
     .button-group {
         display: grid;
-        grid-template-columns: 1.15fr 0.95fr 1fr;
+        grid-template-columns: 1fr;
         gap: 8px;
         grid-auto-rows: 1fr;
+    }
+
+    .weather-control {
+        width: 100%;
     }
 
     .btn {
