@@ -62,32 +62,13 @@
             </article>
         </section>
 
-        <section class="impact-progress" aria-label="Impact progress">
-            <div class="impact-progress-header">
-                <p class="impact-label">Water Provided</p>
-                <p class="impact-value"><span id="impact-progress-value">0</span>%</p>
-            </div>
-            <div class="impact-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Water provided progress">
-                <span id="impact-progress-fill" class="impact-fill"></span>
-            </div>
-        </section>
-
         <!-- Game controls -->
         <section class="control-panel" aria-label="Game controls">
             <div class="button-group">
                 <button id="start-btn" class="btn btn-primary">Start Game</button>
                 <button id="reset-btn" class="btn btn-secondary">Reset</button>
-                <div class="weather-control">
-                    <label for="weather-mode" class="weather-mode-label">Choose Difficulty Level</label>
-                    <select id="weather-mode" class="weather-mode-select" aria-label="Choose storm intensity mode">
-                        <option value="calm">Level 1 - Calm (Easy)</option>
-                        <option value="dramatic" selected>Level 2 - Dramatic (Medium)</option>
-                        <option value="hard">Level 3 - Hard (Intense)</option>
-                    </select>
-                </div>
             </div>
         </section>
-        <p id="weather-mode-hint" class="weather-mode-hint" aria-live="polite">Difficulty Level 2 selected: balanced challenge with steady pressure and frequent lightning windows.</p>
         <p id="action-feedback" class="action-feedback" aria-live="polite">Press Start to begin your clean water mission.</p>
 
         <!-- Main game area where drops fall -->
@@ -103,6 +84,8 @@
             <div id="game-streak-display" class="game-streak-display" aria-live="polite" aria-label="Current streak">
                 <p class="streak-text"></p>
             </div>
+            <div id="badge-toast" class="badge-toast" aria-live="polite" aria-atomic="true"></div>
+            <div id="milestone-feedback" class="milestone-feedback" aria-live="polite" aria-atomic="true"></div>
             <div id="magnet-countdown" class="magnet-countdown" aria-live="polite" aria-label="Magnet timer"></div>
             <div class="environment-layer" aria-hidden="true">
                 <div class="sky-layer">
@@ -142,6 +125,10 @@
                     <p class="summary-item"><span class="summary-label">Polluted Avoided</span><span id="summary-polluted-avoided" class="summary-value">0</span></p>
                     <p class="summary-item"><span class="summary-label">Best Streak</span><span id="summary-best-streak" class="summary-value">0</span></p>
                 </section>
+                <section id="badge-summary" class="badge-summary hidden" aria-label="Badges earned this round">
+                    <p class="badge-summary-title">Badges Earned</p>
+                    <ul id="badge-summary-list" class="badge-summary-list"></ul>
+                </section>
                 <p class="result-message" id="result-message"></p>
                 <div class="modal-donation-cta" role="complementary" aria-label="Support clean water">
                     <p class="donation-cta-text">Your game helped <span id="modal-families-count">0</span> families. Support real clean water projects.</p>
@@ -165,6 +152,8 @@
             <p class="legend-item"><span class="drop-icon polluted material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Avoid polluted drops</strong> (-20).</p>
             <p class="legend-item"><span class="drop-icon polluted material-symbols-rounded" aria-hidden="true">bolt</span> <strong>Watch the weather</strong> and react before lightning.</p>
             <p class="legend-item"><span class="drop-icon bonus material-symbols-rounded" aria-hidden="true">favorite</span> <strong>Build streaks</strong> (3 clean catches = x1.2 multiplier, 7 = x1.5, 12 = x2.0!). One miss breaks your streak.</p>
+            <p class="legend-item"><span class="drop-icon bonus material-symbols-rounded" aria-hidden="true">water_drop</span> <strong>Bonus Rain</strong> can rarely trigger after a bonus or power-up catch, creating a short burst of extra bonus drops for about 2-3 seconds.</p>
+            <p class="legend-item"><span class="drop-icon bonus material-symbols-rounded" aria-hidden="true">emoji_events</span> <strong>Achievement badges:</strong> Streak Master (12+ combo), Clean Crusader (50+ clean drops), Storm Survivor (survive 3 storms), Unstoppable (500+ score).</p>
             <p class="goal-text">Goal: 150 points.</p>
 
             <div class="charity-callout" role="note" aria-label="Support clean water mission">

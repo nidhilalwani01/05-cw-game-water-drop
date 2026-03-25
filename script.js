@@ -47,6 +47,11 @@ let gameState = {
     timerPulseTimeout: null,    // Timeout for timer pulse class cleanup
     timerBurstTimeout: null,    // Timeout for Time Burst timer highlight cleanup
     goalPulseTimeout: null,     // Timeout for goal pulse class cleanup
+    milestoneFeedbackTimeout: null, // Timeout for transient milestone feedback cleanup
+    cascadeInterval: null,      // Interval handle for active cascade bonus rain
+    cascadeTimeout: null,       // Timeout handle to end cascade bonus rain
+    cascadeActive: false,       // Whether a cascade bonus-rain event is active
+    cascadeCooldownUntil: 0,    // Timestamp until another cascade can trigger
     actionFeedbackTimeout: null, // Timeout for action feedback state cleanup
     scoreboardFlashTimeout: null, // Timeout for scoreboard gain/loss flash cleanup
     lightningShakeTimeout: null, // Timeout for lightning screen-shake cleanup
@@ -59,6 +64,8 @@ let gameState = {
     lightningWarningStep: 0,    // Current warning beat before lightning lands
     progressCelebrated: false,  // Whether full progress celebration has already played this round
     impactCelebrateTimeout: null, // Timeout for progress celebration class cleanup
+    nextMilestoneScore: 100,    // Next score threshold for dynamic milestone feedback
+    milestonesReached: 0,       // Count of reached milestones this round
     magnetActiveUntil: 0,       // Timestamp until the bucket magnet pull is active
     magnetTimeout: null,        // Timeout handle for magnet visual cleanup
     magnetWarningTimeout: null, // Timeout handle for warning before magnet expires
@@ -67,7 +74,19 @@ let gameState = {
     magnetFrameIntervalMs: 16,  // Minimum spacing between magnet pull updates
     lastCollisionCheckAt: 0,    // Timestamp of the most recent collision check
     lastMagnetPullCheckAt: 0,   // Timestamp of the most recent magnet pull update
+    stormsSurvived: 0,          // Number of completed storms this round
+    unlockedBadges: new Set(),  // Badge ids unlocked this round
+    badgeToastTimeout: null,    // Timeout handle for badge popup cleanup
+    activeCueUntil: 0,          // Timestamp until current cue finishes playing
+    lastCueCooldownUntil: 0,    // Timestamp until next cue can play (anti-spam)
 };
+
+const BADGE_DEFINITIONS = [
+    { id: 'streak-master', name: 'Streak Master' },
+    { id: 'clean-crusader', name: 'Clean Crusader' },
+    { id: 'storm-survivor', name: 'Storm Survivor' },
+    { id: 'unstoppable', name: 'Unstoppable' },
+];
 
 // Load the saved high score once when the script starts.
 gameState.highScore = Number(localStorage.getItem('drop-for-change-high-score')) || 0;
@@ -100,8 +119,6 @@ const elements = {
     confettiCanvas: document.getElementById('confetti-canvas'),
     themeToggle: document.getElementById('theme-toggle'),
     soundToggle: document.getElementById('sound-toggle'),
-    weatherModeSelect: document.getElementById('weather-mode'),
-    weatherModeHint: document.getElementById('weather-mode-hint'),
     bucket: document.getElementById('collector-bucket'),
     rainLayer: document.getElementById('rain-layer'),
     lightningFlash: document.getElementById('lightning-flash'),
@@ -111,99 +128,161 @@ const elements = {
     goalCard: document.querySelector('.scoreboard .stat-card:nth-child(3)'),
     scoreboard: document.querySelector('.scoreboard'),
     actionFeedback: document.getElementById('action-feedback'),
+    milestoneFeedback: document.getElementById('milestone-feedback'),
     pregameOverlay: document.getElementById('pregame-overlay'),
     countdownOverlay: document.getElementById('countdown-overlay'),
     countdownNumber: document.getElementById('countdown-number'),
     resultStatus: document.getElementById('result-status'),
     modalContent: document.querySelector('.modal-content'),
-    impactProgressFill: document.getElementById('impact-progress-fill'),
-    impactProgressValue: document.getElementById('impact-progress-value'),
-    impactProgressTrack: document.querySelector('.impact-track'),
-    impactProgressSection: document.querySelector('.impact-progress'),
+    badgeToast: document.getElementById('badge-toast'),
+    badgeSummary: document.getElementById('badge-summary'),
+    badgeSummaryList: document.getElementById('badge-summary-list'),
 };
 
-const weatherPresets = {
-    calm: {
-        label: 'Level 1 - Calm (Easy)',
-        hint: 'Difficulty Level 1 selected: easy pace with slower drops, fewer polluted drops, and gentler storms.',
-        stormDelayMin: 13000,
-        stormDelayMax: 18000,
-        stormDurationMs: 1900,
-        lightningWarningMs: 920,
-        lightningFlashMs: 760,
-        freezeMs: 520,
-        timeBurstChance: 0.065,
-        magnetChance: 0,
-        rainBurstCount: 6,
-        rainSpawnIntervalMs: 210,
-        rainDurationMin: 0.62,
-        rainDurationMax: 1,
-        rainOpacityMin: 0.28,
-        rainOpacityMax: 0.58,
-        dropSpawnIntervalMs: 1080,
-        dropFallMinSec: 3.1,
-        dropFallMaxSec: 4.9,
-        cleanChance: 0.8,
-        pollutedChance: 0.12,
-        stormPatternMs: [17000, 15000, 16200],
-        stormDelayFloorMs: 7600,
-        stormSpeedupMax: 0.3,
-        lightningWarningBeats: 3,
-    },
-    dramatic: {
-        label: 'Level 2 - Dramatic (Medium)',
-        hint: 'Difficulty Level 2 selected: balanced challenge with steady pressure and frequent lightning windows.',
-        stormDelayMin: 8000,
-        stormDelayMax: 12000,
-        stormDurationMs: 2800,
-        lightningWarningMs: 600,
-        lightningFlashMs: 1000,
-        freezeMs: 900,
-        timeBurstChance: 0.05,
-        magnetChance: 0,
-        rainBurstCount: 14,
-        rainSpawnIntervalMs: 130,
-        rainDurationMin: 0.45,
-        rainDurationMax: 0.85,
-        rainOpacityMin: 0.45,
-        rainOpacityMax: 0.9,
-        dropSpawnIntervalMs: 800,
-        dropFallMinSec: 2,
-        dropFallMaxSec: 3.4,
-        cleanChance: 0.7,
-        pollutedChance: 0.2,
-        stormPatternMs: [11000, 9600, 10400, 9000],
-        stormDelayFloorMs: 4700,
-        stormSpeedupMax: 0.36,
-        lightningWarningBeats: 3,
-    },
-    hard: {
-        label: 'Level 3 - Hard (Intense)',
-        hint: 'Difficulty Level 3 selected: intense mode with faster drops, more polluted drops, and harsher storms.',
-        stormDelayMin: 5200,
-        stormDelayMax: 8200,
-        stormDurationMs: 3400,
-        lightningWarningMs: 430,
-        lightningFlashMs: 1120,
-        freezeMs: 1500,
-        timeBurstChance: 0.03,
-        magnetChance: 0,
-        rainBurstCount: 18,
-        rainSpawnIntervalMs: 95,
-        rainDurationMin: 0.34,
-        rainDurationMax: 0.62,
-        rainOpacityMin: 0.56,
-        rainOpacityMax: 0.98,
-        dropSpawnIntervalMs: 560,
-        dropFallMinSec: 1.2,
-        dropFallMaxSec: 2.2,
-        cleanChance: 0.54,
-        pollutedChance: 0.34,
-        stormPatternMs: [7600, 6800, 7200, 6200, 6600],
-        stormDelayFloorMs: 3300,
-        stormSpeedupMax: 0.4,
-        lightningWarningBeats: 3,
-    },
+function getBadgeNameById(badgeId) {
+    const definition = BADGE_DEFINITIONS.find((badge) => badge.id === badgeId);
+    return definition ? definition.name : badgeId;
+}
+
+function playCueSound(cueType, badgeName = '') {
+    if (!soundState.enabled) {
+        return;
+    }
+
+    const now = performance.now();
+    if (now < gameState.activeCueUntil) {
+        return;
+    }
+
+    let text = '';
+    let duration = 0.8;
+
+    if (cueType === 'achievement') {
+        text = badgeName ? `${badgeName} unlocked!` : 'Achievement unlocked!';
+        duration = 1.4;
+    } else if (cueType === 'time-boost') {
+        text = 'Time burst!';
+        duration = 0.8;
+    } else if (cueType === 'bonus-rain') {
+        text = 'Bonus rain!';
+        duration = 0.8;
+    }
+
+    if (text && window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.2;
+        utterance.pitch = 1.2;
+        utterance.volume = 1.0;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+    }
+
+    gameState.activeCueUntil = now + (duration * 1000) + 200;
+}
+
+function showBadgeToast(badgeName) {
+    if (!elements.badgeToast) {
+        return;
+    }
+
+    elements.badgeToast.textContent = `🏆 ${badgeName} Unlocked!`;
+    elements.badgeToast.classList.remove('show');
+    void elements.badgeToast.offsetWidth;
+    elements.badgeToast.classList.add('show');
+
+    clearTimeout(gameState.badgeToastTimeout);
+    gameState.badgeToastTimeout = setTimeout(() => {
+        elements.badgeToast?.classList.remove('show');
+    }, 1600);
+}
+
+function unlockBadge(badgeId) {
+    if (gameState.unlockedBadges.has(badgeId)) {
+        return;
+    }
+
+    gameState.unlockedBadges.add(badgeId);
+    const badgeName = getBadgeNameById(badgeId);
+    showBadgeToast(badgeName);
+    playCueSound('achievement', badgeName);
+}
+
+function evaluateBadgeProgress() {
+    if (!gameState.isRunning) {
+        return;
+    }
+
+    if (gameState.bestStreak >= 12) {
+        unlockBadge('streak-master');
+    }
+
+    if (gameState.cleanCaught >= 50) {
+        unlockBadge('clean-crusader');
+    }
+
+    if (gameState.stormsSurvived >= 3) {
+        unlockBadge('storm-survivor');
+    }
+
+    if (gameState.score >= 500) {
+        unlockBadge('unstoppable');
+    }
+}
+
+function renderBadgeSummary() {
+    if (!elements.badgeSummary || !elements.badgeSummaryList) {
+        return;
+    }
+
+    const earnedBadgeIds = Array.from(gameState.unlockedBadges);
+    elements.badgeSummaryList.innerHTML = '';
+
+    if (earnedBadgeIds.length === 0) {
+        elements.badgeSummary.classList.add('hidden');
+        return;
+    }
+
+    earnedBadgeIds.forEach((badgeId) => {
+        const item = document.createElement('li');
+        item.className = 'badge-summary-item';
+        item.textContent = `🏆 ${getBadgeNameById(badgeId)}`;
+        elements.badgeSummaryList.appendChild(item);
+    });
+
+    elements.badgeSummary.classList.remove('hidden');
+}
+
+const gameplayTuning = {
+    stormDelayMin: 8000,
+    stormDelayMax: 12000,
+    stormDurationMs: 2800,
+    lightningWarningMs: 600,
+    lightningFlashMs: 1000,
+    freezeMs: 900,
+    timeBurstChance: 0.05,
+    magnetChance: 0,
+    rainBurstCount: 14,
+    rainSpawnIntervalMs: 130,
+    rainDurationMin: 0.45,
+    rainDurationMax: 0.85,
+    rainOpacityMin: 0.45,
+    rainOpacityMax: 0.9,
+    dropSpawnIntervalMs: 800,
+    dropFallMinSec: 2,
+    dropFallMaxSec: 3.4,
+    cleanChance: 0.7,
+    pollutedChance: 0.2,
+    stormPatternMs: [11000, 9600, 10400, 9000],
+    stormDelayFloorMs: 4700,
+    stormSpeedupMax: 0.36,
+    lightningWarningBeats: 3,
+};
+
+const speedRamp = {
+    pointsPerStep: 18,
+    maxSpeedMultiplier: 1.85,
+    uiPulseStartMultiplier: 1.25,
+    uiPulseHighMultiplier: 1.55,
 };
 
 const inputState = {
@@ -228,6 +307,83 @@ const STREAK_MULTIPLIERS = {
     high: 1.5,
     max: 2.0,
 };
+
+const BASE_MILESTONE_STEPS = [100, 250, 500, 750, 1000];
+const MILESTONE_MESSAGES = ['Nice start!', 'Strong run!', 'Impressive!', 'Unstoppable!'];
+const CASCADE_TRIGGER_CHANCE = 0.16;
+const CASCADE_DURATION_MS = 2400;
+const CASCADE_SPAWN_INTERVAL_MS = 280;
+const CASCADE_MAX_SPAWNS = 8;
+const CASCADE_COOLDOWN_MS = 14000;
+
+function calculateFamiliesHelped(score) {
+    return Math.floor(Math.max(0, score) / gameState.targetScore);
+}
+
+function getNextMilestoneAfter(currentMilestone) {
+    if (currentMilestone < BASE_MILESTONE_STEPS[BASE_MILESTONE_STEPS.length - 1]) {
+        return BASE_MILESTONE_STEPS.find((value) => value > currentMilestone) || 1000;
+    }
+
+    // After 1000, grow by larger intervals to stay meaningful for long endless runs.
+    const dynamicStep = Math.max(250, Math.floor(currentMilestone * 0.25));
+    return currentMilestone + dynamicStep;
+}
+
+function getMilestoneMessage() {
+    const messageIndex = gameState.milestonesReached % MILESTONE_MESSAGES.length;
+    const cheer = MILESTONE_MESSAGES[messageIndex];
+    const families = calculateFamiliesHelped(gameState.score);
+
+    if (families > 0) {
+        const familyLabel = families === 1 ? 'family' : 'families';
+        return `${cheer} You helped provide water to ${families} ${familyLabel}.`;
+    }
+
+    return cheer;
+}
+
+function showMilestoneFeedback(message) {
+    if (!elements.milestoneFeedback) {
+        return;
+    }
+
+    elements.milestoneFeedback.textContent = message;
+    elements.milestoneFeedback.classList.remove('show');
+    void elements.milestoneFeedback.offsetWidth;
+    elements.milestoneFeedback.classList.add('show');
+
+    clearTimeout(gameState.milestoneFeedbackTimeout);
+    gameState.milestoneFeedbackTimeout = setTimeout(() => {
+        elements.milestoneFeedback?.classList.remove('show');
+    }, 1400);
+}
+
+function checkMilestoneProgress(previousScore, currentScore) {
+    if (currentScore <= previousScore) {
+        return;
+    }
+
+    let reachedAnyMilestone = false;
+
+    while (currentScore >= gameState.nextMilestoneScore) {
+        gameState.milestonesReached += 1;
+        reachedAnyMilestone = true;
+        gameState.nextMilestoneScore = getNextMilestoneAfter(gameState.nextMilestoneScore);
+    }
+
+    if (!reachedAnyMilestone) {
+        return;
+    }
+
+    showMilestoneFeedback(getMilestoneMessage());
+    elements.gameContainer?.classList.remove('milestone-pulse');
+    void elements.gameContainer?.offsetWidth;
+    elements.gameContainer?.classList.add('milestone-pulse');
+    setTimeout(() => {
+        elements.gameContainer?.classList.remove('milestone-pulse');
+    }, 520);
+}
 
 // ==========================================
 // THEME TOGGLE (Visual only, does not affect game logic)
@@ -427,49 +583,27 @@ function initializeSoundSystem() {
 }
 
 function getActiveWeatherPreset() {
-    return weatherPresets[gameState.weatherMode] || weatherPresets.dramatic;
+    return gameplayTuning;
 }
 
-function applyWeatherMode(mode) {
-    const selectedMode = weatherPresets[mode] ? mode : 'dramatic';
-    const preset = weatherPresets[selectedMode];
-    gameState.weatherMode = selectedMode;
-
-    elements.gameContainer.classList.remove('weather-calm', 'weather-dramatic', 'weather-hard');
-    elements.gameContainer.classList.add(`weather-${selectedMode}`);
-
-    if (elements.weatherModeSelect) {
-        elements.weatherModeSelect.value = selectedMode;
-        elements.weatherModeSelect.setAttribute('title', preset.label);
-        elements.weatherModeSelect.setAttribute('aria-label', `Choose difficulty level. Current level: ${preset.label}`);
-    }
-
-    if (elements.weatherModeHint) {
-        elements.weatherModeHint.textContent = preset.hint;
-    }
-
-    if (gameState.isRunning) {
-        updateDropInterval();
-    }
+function getDynamicSpeedMultiplier() {
+    // Smooth logarithmic ramp: subtle early game, increasingly noticeable later.
+    const clampedScore = Math.max(0, gameState.score);
+    const growth = Math.log1p(clampedScore / speedRamp.pointsPerStep);
+    const speedMultiplier = 1 + Math.min(speedRamp.maxSpeedMultiplier - 1, growth * 0.3);
+    return Math.max(1, Math.min(speedRamp.maxSpeedMultiplier, speedMultiplier));
 }
 
-function initializeWeatherModeControl() {
-    const savedMode = localStorage.getItem('drop-for-change-weather-mode');
-    applyWeatherMode(savedMode || 'dramatic');
-
-    if (elements.weatherModeSelect) {
-        elements.weatherModeSelect.addEventListener('change', (event) => {
-            const previousMode = gameState.weatherMode;
-            const selectedMode = event.target.value;
-            applyWeatherMode(selectedMode);
-            localStorage.setItem('drop-for-change-weather-mode', gameState.weatherMode);
-
-            if (gameState.isRunning && previousMode !== gameState.weatherMode) {
-                const activePreset = getActiveWeatherPreset();
-                showFeedbackMessage(`Mode switched: ${activePreset.label}.`, 'storm', 1300);
-            }
-        });
+function updateIntensityCue() {
+    if (!elements.gameContainer || !elements.scoreboard) {
+        return;
     }
+
+    const speedMultiplier = getDynamicSpeedMultiplier();
+    elements.gameContainer.classList.toggle('intensity-rising', speedMultiplier >= speedRamp.uiPulseStartMultiplier);
+    elements.scoreboard.classList.toggle('intensity-rising', speedMultiplier >= speedRamp.uiPulseStartMultiplier);
+    elements.gameContainer.classList.toggle('intensity-high', speedMultiplier >= speedRamp.uiPulseHighMultiplier);
+    elements.scoreboard.classList.toggle('intensity-high', speedMultiplier >= speedRamp.uiPulseHighMultiplier);
 }
 
 function updateDropInterval() {
@@ -493,7 +627,6 @@ elements.resetBtn.addEventListener('click', resetGame);
 elements.playAgainBtn.addEventListener('click', resetGame);
 initializeThemeToggle();
 initializeSoundSystem();
-initializeWeatherModeControl();
 initializeBucketControls();
 applyDevicePerformanceProfile();
 initializeAmbientParallax();
@@ -652,16 +785,32 @@ function startActiveRound() {
     gameState.bestStreak = 0;
     gameState.cleanCaught = 0;
     gameState.pollutedAvoided = 0;
+    gameState.stormsSurvived = 0;
+    gameState.unlockedBadges = new Set();
     gameState.timeRemaining = 60;
     gameState.stormCycleIndex = 0;
     gameState.stormPatternTipShown = false;
     gameState.lightningWarningStep = 0;
     gameState.progressCelebrated = false;
+    gameState.cascadeActive = false;
+    gameState.cascadeCooldownUntil = 0;
+    clearInterval(gameState.cascadeInterval);
+    clearTimeout(gameState.cascadeTimeout);
+    gameState.cascadeInterval = null;
+    gameState.cascadeTimeout = null;
+    elements.gameContainer.classList.remove('cascade-rain-moment');
     gameState.magnetActiveUntil = 0;
     clearTimeout(gameState.magnetTimeout);
     clearTimeout(gameState.magnetWarningTimeout);
+    clearTimeout(gameState.badgeToastTimeout);
     gameState.magnetTimeout = null;
     gameState.magnetWarningTimeout = null;
+    gameState.badgeToastTimeout = null;
+    elements.badgeToast?.classList.remove('show');
+    elements.badgeSummary?.classList.add('hidden');
+    if (elements.badgeSummaryList) {
+        elements.badgeSummaryList.innerHTML = '';
+    }
     elements.bucket.classList.remove('bucket-magnet-active');
     updateMagnetCountdownDisplay();
 
@@ -729,6 +878,8 @@ function resetGame() {
     gameState.bestStreak = 0;
     gameState.cleanCaught = 0;
     gameState.pollutedAvoided = 0;
+    gameState.stormsSurvived = 0;
+    gameState.unlockedBadges = new Set();
     gameState.timeRemaining = 60;
     gameState.bucketVelocity = 0;
     gameState.bucketSteer = 0;
@@ -739,6 +890,8 @@ function resetGame() {
     gameState.stormPatternTipShown = false;
     gameState.lightningWarningStep = 0;
     gameState.progressCelebrated = false;
+    gameState.cascadeActive = false;
+    gameState.cascadeCooldownUntil = 0;
     gameState.magnetActiveUntil = 0;
     inputState.leftPressed = false;
     inputState.rightPressed = false;
@@ -758,12 +911,16 @@ function resetGame() {
     clearTimeout(gameState.timerPulseTimeout);
     clearTimeout(gameState.timerBurstTimeout);
     clearTimeout(gameState.goalPulseTimeout);
+    clearTimeout(gameState.milestoneFeedbackTimeout);
+    clearInterval(gameState.cascadeInterval);
+    clearTimeout(gameState.cascadeTimeout);
     clearTimeout(gameState.actionFeedbackTimeout);
     clearTimeout(gameState.scoreboardFlashTimeout);
     clearTimeout(gameState.lightningShakeTimeout);
     clearTimeout(gameState.impactCelebrateTimeout);
     clearTimeout(gameState.magnetTimeout);
     clearTimeout(gameState.magnetWarningTimeout);
+    clearTimeout(gameState.badgeToastTimeout);
     gameState.bucketCatchGlowTimeout = null;
     gameState.bucketShakeTimeout = null;
     gameState.gameMomentTimeout = null;
@@ -771,17 +928,22 @@ function resetGame() {
     gameState.timerPulseTimeout = null;
     gameState.timerBurstTimeout = null;
     gameState.goalPulseTimeout = null;
+    gameState.milestoneFeedbackTimeout = null;
+    gameState.cascadeInterval = null;
+    gameState.cascadeTimeout = null;
     gameState.actionFeedbackTimeout = null;
     gameState.scoreboardFlashTimeout = null;
     gameState.lightningShakeTimeout = null;
     gameState.impactCelebrateTimeout = null;
     gameState.magnetTimeout = null;
     gameState.magnetWarningTimeout = null;
+    gameState.badgeToastTimeout = null;
 
     elements.gameContainer.classList.remove('bonus-moment');
     elements.gameContainer.classList.remove('time-moment');
     elements.gameContainer.classList.remove('storm-moment');
     elements.gameContainer.classList.remove('negative-flash');
+    elements.gameContainer.classList.remove('cascade-rain-moment');
     elements.gameContainer.classList.remove('lightning-warning-dim');
     elements.bucket.classList.remove('bucket-bonus-boost');
     elements.bucket.classList.remove('bucket-time-boost');
@@ -794,7 +956,11 @@ function resetGame() {
     elements.timerCard?.classList.remove('timer-card-burst');
     elements.goalCard?.classList.remove('stat-pop');
     elements.scoreboard?.classList.remove('score-positive', 'score-negative');
-    elements.impactProgressSection?.classList.remove('impact-full-celebrate');
+    elements.badgeToast?.classList.remove('show');
+    elements.badgeSummary?.classList.add('hidden');
+    if (elements.badgeSummaryList) {
+        elements.badgeSummaryList.innerHTML = '';
+    }
     document.body.classList.remove('lightning-screen-shake');
 
     // Remove all drops from game area
@@ -870,11 +1036,14 @@ function endGame() {
     elements.summaryClean.textContent = String(gameState.cleanCaught);
     elements.summaryPollutedAvoided.textContent = String(gameState.pollutedAvoided);
     elements.summaryBestStreak.textContent = String(gameState.bestStreak);
+    renderBadgeSummary();
 
     // Calculate impact from total score.
     const familiesHelped = Math.floor(gameState.score / gameState.targetScore);
     const pointsToNextFamily = gameState.targetScore - (gameState.score % gameState.targetScore);
     const isNewHighScore = gameState.score > gameState.highScore;
+
+    const isCompactMobile = window.matchMedia('(max-width: 520px)').matches;
 
     if (familiesHelped > 0) {
         const familyLabel = familiesHelped === 1 ? 'family' : 'families';
@@ -905,8 +1074,9 @@ function endGame() {
         elements.modalContent?.classList.add('result-success');
         elements.gameOverTitle.textContent = 'Clean Water Delivered';
         elements.gameOverTitle.style.color = '#FFC907';
-        elements.resultMessage.textContent =
-            `Strong round. You delivered progress for ${familiesHelped} ${familyLabel}.${highScoreMessage}`;
+        elements.resultMessage.textContent = isCompactMobile
+            ? `Great run. ${familiesHelped} ${familyLabel} helped.${isNewHighScore ? ' New high score!' : ''}`
+            : `Strong round. You delivered progress for ${familiesHelped} ${familyLabel}.${highScoreMessage}`;
         setActionFeedback(`Mission success. Final score: ${gameState.score}.`, 'positive');
         playSoundEffect('win');
         playConfetti();
@@ -920,15 +1090,18 @@ function endGame() {
         elements.modalContent?.classList.add('result-failure');
         elements.gameOverTitle.textContent = 'Mission Incomplete';
         elements.gameOverTitle.style.color = '#FF902A';
-        elements.resultMessage.textContent =
-            `${targetHint} points to go for mission success. Stay on clean-drop streaks and avoid polluted drops. High score: ${gameState.highScore}.`;
+        elements.resultMessage.textContent = isCompactMobile
+            ? `${targetHint} points short. Keep streaks and avoid polluted drops.`
+            : `${targetHint} points to go for mission success. Stay on clean-drop streaks and avoid polluted drops. High score: ${gameState.highScore}.`;
         setActionFeedback(`Round ended. You need ${targetHint} more points for success.`, 'negative');
         playSoundEffect('lose');
     }
 
-    // Show the modal with a small delay to ensure smooth animation
+    // Show the modal with a two-frame handoff to avoid abrupt transition on mobile.
     requestAnimationFrame(() => {
-        elements.gameOverModal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            elements.gameOverModal.classList.remove('hidden');
+        });
     });
 }
 
@@ -938,7 +1111,7 @@ function endGame() {
 
 /**
  * Creates a new falling drop with random type and position
- * Mix and speed adapt to selected weather mode.
+ * Mix stays consistent while fall speed ramps smoothly with score.
  */
 function createDrop() {
     // Don't create drops if game isn't running
@@ -1024,10 +1197,12 @@ function createDrop() {
     const xPosition = Math.random() * (containerWidth - size);
     drop.style.left = xPosition + 'px';
 
-    // Fall speed shifts by weather mode so difficulty is clearly different.
+    // Fall speed scales smoothly with score and is capped to keep gameplay fair.
     const fallRange = Math.max(0, preset.dropFallMaxSec - preset.dropFallMinSec);
-    const fallSpeed = preset.dropFallMinSec + Math.random() * fallRange;
-    drop.style.setProperty('--fall-duration', `${fallSpeed}s`);
+    const baseFallDurationSec = preset.dropFallMinSec + Math.random() * fallRange;
+    const speedMultiplier = getDynamicSpeedMultiplier();
+    const fallDurationSec = Math.max(0.7, baseFallDurationSec / speedMultiplier);
+    drop.style.setProperty('--fall-duration', `${fallDurationSec}s`);
     const dropTilt = dropType === 'powerup-magnet' || dropType === 'powerup-time'
         ? '0deg'
         : `${(Math.random() * 16 - 8).toFixed(2)}deg`;
@@ -1052,6 +1227,105 @@ function createDrop() {
 
         drop.remove();
     });
+}
+
+function createCascadeBonusDrop() {
+    if (!gameState.isRunning) {
+        return;
+    }
+
+    const activeDropCount = elements.gameContainer.querySelectorAll('.drop').length;
+    const maxActiveDrops = gameState.isMobileOptimized ? 16 : 30;
+    if (activeDropCount >= maxActiveDrops) {
+        return;
+    }
+
+    const drop = document.createElement('div');
+    drop.className = 'drop bonus material-symbols-rounded cascade-drop';
+    drop.textContent = 'water_drop';
+    drop.dataset.points = 50;
+    drop.dataset.type = 'bonus';
+
+    let size = 56 + Math.random() * 10;
+    if (gameState.isMobileOptimized) {
+        size *= 0.88;
+    }
+
+    drop.style.width = `${size}px`;
+    drop.style.height = `${size}px`;
+    drop.style.fontSize = `${Math.round(size * 0.9)}px`;
+
+    const containerWidth = elements.gameContainer.offsetWidth;
+    const marginX = Math.max(6, size * 0.2);
+    const xPosition = marginX + Math.random() * Math.max(0, containerWidth - size - marginX * 2);
+    drop.style.left = `${xPosition}px`;
+
+    const fallDurationSec = (gameState.isMobileOptimized ? 1.85 : 1.7) + Math.random() * 0.45;
+    drop.style.setProperty('--fall-duration', `${fallDurationSec}s`);
+    drop.style.setProperty('--drop-tilt', `${(Math.random() * 10 - 5).toFixed(2)}deg`);
+    drop.style.setProperty('--drop-sway', `${(Math.random() * 6 + 3).toFixed(2)}px`);
+    drop.dataset.baseSway = drop.style.getPropertyValue('--drop-sway') || '0px';
+
+    elements.gameContainer.appendChild(drop);
+
+    drop.addEventListener('animationend', () => {
+        if (gameState.isRunning && !drop.classList.contains('collected')) {
+            resetStreak();
+        }
+        drop.remove();
+    });
+}
+
+function triggerCascadeEvent() {
+    if (!gameState.isRunning || gameState.cascadeActive) {
+        return;
+    }
+
+    const now = performance.now();
+    if (now < gameState.cascadeCooldownUntil) {
+        return;
+    }
+
+    gameState.cascadeActive = true;
+    gameState.cascadeCooldownUntil = now + CASCADE_COOLDOWN_MS;
+    playCueSound('bonus-rain');
+
+    showFeedbackMessage('Bonus Rain!', 'bonus', 1300);
+    setActionFeedback('Bonus Rain! Catch the golden drops.', 'positive', 1500);
+    triggerGameMoment('bonus', 620);
+
+    elements.gameContainer.classList.remove('cascade-rain-moment');
+    void elements.gameContainer.offsetWidth;
+    elements.gameContainer.classList.add('cascade-rain-moment');
+
+    let spawned = 0;
+    gameState.cascadeInterval = setInterval(() => {
+        if (!gameState.isRunning || spawned >= CASCADE_MAX_SPAWNS) {
+            clearInterval(gameState.cascadeInterval);
+            gameState.cascadeInterval = null;
+            return;
+        }
+
+        createCascadeBonusDrop();
+        spawned += 1;
+    }, CASCADE_SPAWN_INTERVAL_MS);
+
+    gameState.cascadeTimeout = setTimeout(() => {
+        clearInterval(gameState.cascadeInterval);
+        gameState.cascadeInterval = null;
+        gameState.cascadeActive = false;
+        elements.gameContainer.classList.remove('cascade-rain-moment');
+    }, CASCADE_DURATION_MS);
+}
+
+function maybeTriggerCascadeFromSpecialCatch(isSpecialCatch) {
+    if (!isSpecialCatch || !gameState.isRunning || gameState.cascadeActive) {
+        return;
+    }
+
+    if (Math.random() < CASCADE_TRIGGER_CHANCE) {
+        triggerCascadeEvent();
+    }
 }
 
 function getStreakMultiplier(streakCount) {
@@ -1130,6 +1404,8 @@ function updateStreakDisplay() {
             }
         }
     }
+
+    evaluateBadgeProgress();
 }
 
 function resetStreak() {
@@ -1209,6 +1485,7 @@ function showTimeBurstFeedback(drop, secondsAdded) {
 }
 
 function grantTimeBurst(secondsAdded, drop) {
+    playCueSound('time-boost');
     gameState.timeRemaining += secondsAdded;
     updateTimer();
     triggerTimerBurstHighlight();
@@ -1386,10 +1663,10 @@ function scorePoints(drop, points) {
         ? 'bonus'
         : (dropType === 'powerup-time' ? 'time' : dropType);
     
-    // Only show toast message for non-clean drops (polluted, bonus, magnet), clean catches are shown via streak
-    if (!isClean) {
-        showFeedbackMessage(message, feedbackType, 1700);
-    }
+    // Suppress individual item messages (jerry cans, polluted, magnet, etc)
+    // Only cascade event messages (bonus rain, time burst events) are shown
+
+    maybeTriggerCascadeFromSpecialCatch(isBonus || isMagnetPowerUp || isTimePowerUp);
     
     // Show points feedback (popups) for all drops
     if (!isMagnetPowerUp && !isTimePowerUp) {
@@ -2031,6 +2308,10 @@ function clearRainParticles() {
 
 function endStorm() {
     gameState.stormActive = false;
+    if (gameState.isRunning) {
+        gameState.stormsSurvived += 1;
+        evaluateBadgeProgress();
+    }
     elements.gameContainer.classList.remove('storm-active');
     elements.gameContainer.classList.remove('lightning-warning');
     elements.gameContainer.classList.remove('lightning-active');
@@ -2039,6 +2320,10 @@ function endStorm() {
     elements.gameContainer.classList.remove('bonus-moment');
     elements.gameContainer.classList.remove('time-moment');
     elements.gameContainer.classList.remove('storm-moment');
+    elements.gameContainer.classList.remove('intensity-rising');
+    elements.gameContainer.classList.remove('intensity-high');
+    elements.scoreboard?.classList.remove('intensity-rising');
+    elements.scoreboard?.classList.remove('intensity-high');
     delete elements.gameContainer.dataset.lightningLabel;
 
     clearInterval(gameState.stormRainInterval);
@@ -2078,6 +2363,10 @@ function stopStormSystem() {
     elements.gameContainer.classList.remove('bonus-moment');
     elements.gameContainer.classList.remove('time-moment');
     elements.gameContainer.classList.remove('storm-moment');
+    elements.gameContainer.classList.remove('intensity-rising');
+    elements.gameContainer.classList.remove('intensity-high');
+    elements.scoreboard?.classList.remove('intensity-rising');
+    elements.scoreboard?.classList.remove('intensity-high');
     delete elements.gameContainer.dataset.lightningLabel;
     document.body.classList.remove('lightning-screen-shake');
 }
@@ -2336,7 +2625,8 @@ function updateScore() {
     const previousScore = Number(elements.scoreDisplay.dataset.lastScore || 0);
     elements.scoreDisplay.textContent = gameState.score;
     elements.scoreDisplay.dataset.lastScore = String(gameState.score);
-    updateImpactProgress(previousScore, gameState.score);
+    checkMilestoneProgress(previousScore, gameState.score);
+    updateIntensityCue();
 
     const allowScoreAnimations = !gameState.isMobileOptimized;
 
@@ -2370,38 +2660,8 @@ function updateScore() {
             }, 430);
         }
     }
-}
 
-function updateImpactProgress(previousScore, currentScore) {
-    if (!elements.impactProgressFill || !elements.impactProgressValue || !elements.impactProgressTrack) {
-        return;
-    }
-
-    const clampedRatio = Math.max(0, Math.min(1, currentScore / gameState.targetScore));
-    const progressPercent = Math.round(clampedRatio * 100);
-
-    elements.impactProgressFill.style.width = `${progressPercent}%`;
-    elements.impactProgressValue.textContent = String(progressPercent);
-    elements.impactProgressTrack.setAttribute('aria-valuenow', String(progressPercent));
-
-    const wasFull = previousScore >= gameState.targetScore;
-    const isNowFull = currentScore >= gameState.targetScore;
-
-    if (isNowFull && !wasFull && !gameState.progressCelebrated) {
-        elements.impactProgressSection?.classList.remove('impact-full-celebrate');
-        void elements.impactProgressSection?.offsetWidth;
-        elements.impactProgressSection?.classList.add('impact-full-celebrate');
-
-        gameState.progressCelebrated = true;
-        clearTimeout(gameState.impactCelebrateTimeout);
-        gameState.impactCelebrateTimeout = setTimeout(() => {
-            elements.impactProgressSection?.classList.remove('impact-full-celebrate');
-        }, 620);
-    }
-
-    if (!isNowFull) {
-        gameState.progressCelebrated = false;
-    }
+    evaluateBadgeProgress();
 }
 
 /**
